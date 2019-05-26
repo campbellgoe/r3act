@@ -1,4 +1,4 @@
-#r3act
+# r3act
 
 This integrate three.js into React.
 
@@ -75,7 +75,7 @@ This section has moved here: https://facebook.github.io/create-react-app/docs/de
 
 This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
 
-##License
+## License
 
 It uses code from [https://github.com/PierfrancescoSoffritti/pierfrancescosoffritti.com](PierfrancescoSoffritti)
 and so the code used to attach threejs to react inside src/threejs and render something is under the MIT license.
