@@ -1,6 +1,6 @@
 # r3act
 
-This integrate three.js into React.
+This integrates three.js into React.
 
 1. Open terminal and `cd` to the cloned folder.
 
