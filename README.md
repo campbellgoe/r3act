@@ -2,7 +2,13 @@
 
 This integrate three.js into React.
 
-It is based on the code provided by [Pierfrancesco Soffritti](https://github.com/PierfrancescoSoffritti/pierfrancescosoffritti.com).
+1. Open terminal and `cd` to the cloned folder.
+
+2. `npm install`
+
+3. `npm start`
+
+Browser opens at localhost:3000
 
 ---
 
@@ -74,33 +80,3 @@ This section has moved here: https://facebook.github.io/create-react-app/docs/de
 ### `npm run build` fails to minify
 
 This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
-
-## License
-
-It uses code from [Pierfrancesco Soffritti](https://github.com/PierfrancescoSoffritti/pierfrancescosoffritti.com)
-and so the code used to attach threejs to react inside src/threejs and render something is under the MIT license.
-See that folder's LICENSE file for more. Custom code built on top of this may be put under a different license, despite being in the same files. However, for now it seems all code in this repository is under the MIT license.
-
-Here is the license from the original code:
-
-MIT License
-
-Copyright (c) 2019 Pierfrancesco Soffritti
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
