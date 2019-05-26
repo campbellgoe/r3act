@@ -2,7 +2,7 @@
 
 This integrate three.js into React.
 
-It is based on the code provided by Pierfrancesco Soffritti.
+It is based on the code provided by [Pierfrancesco Soffritti](https://github.com/PierfrancescoSoffritti/pierfrancescosoffritti.com).
 
 ---
 
@@ -77,7 +77,7 @@ This section has moved here: https://facebook.github.io/create-react-app/docs/tr
 
 ## License
 
-It uses code from [https://github.com/PierfrancescoSoffritti/pierfrancescosoffritti.com](PierfrancescoSoffritti)
+It uses code from [Pierfrancesco Soffritti](https://github.com/PierfrancescoSoffritti/pierfrancescosoffritti.com)
 and so the code used to attach threejs to react inside src/threejs and render something is under the MIT license.
 See that folder's LICENSE file for more. Custom code built on top of this may be put under a different license, despite being in the same files. However, for now it seems all code in this repository is under the MIT license.
 
