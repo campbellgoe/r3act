@@ -2,27 +2,69 @@ import React, { Component } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import Resize from './Resize';
-import tree1 from './models/tree-1/scene.gltf';
-
+import treeGLTF from './models/tree-1/scene.gltf';
+import treeFBX from './models/tree-1-fbx/trees1.fbx';
 class Scene extends Component {
   loadModels = () => {
     return new Promise((resolve, reject) => {
-      const loader = new GLTFLoader();
-
-      loader.load(
-        tree1,
-        function(gltf) {
-          resolve(gltf);
-          //scene.add( gltf.scene );
-        },
-        undefined,
-        function(error) {
-          reject(error);
+      const type = 'gltf';
+      switch (type) {
+        case 'fbx': {
+          import('three/examples/js/loaders/FBXLoader').then(() => {
+            // Note : window. is required here to make it works.
+            const loader = new window.THREE.FBXLoader();
+            // Have fun here
+            console.log('loader:', loader);
+            loader.load(
+              treeFBX,
+              function(obj) {
+                resolve(obj);
+                //scene.add( gltf.scene );
+              },
+              undefined,
+              function(error) {
+                reject(error);
+              }
+            );
+          });
+          break;
         }
-      );
+        case 'gltf': {
+          ///*
+          const loader = new GLTFLoader();
+
+          loader.load(
+            treeGLTF,
+            function(gltf) {
+              gltf.scene.traverse(child => {
+                if (child.isMesh && child.name.includes('leaf')) {
+                  //this allows transparent textures such a tree leaves
+                  child.material.transparent = true;
+                  //this removes depth issues where leaves behind were blacked
+                  //out behind leaves in front
+                  child.material.alphaTest = 0.5;
+                }
+              });
+              resolve(gltf.scene);
+            },
+            undefined,
+            function(error) {
+              reject(error);
+            }
+          );
+          //*/
+          break;
+        }
+        default: {
+          break;
+        }
+      }
     });
   };
+
   componentDidMount() {
+    window.THREE = THREE;
+
     const width = this.mount.clientWidth;
     const height = this.mount.clientHeight;
 
@@ -76,8 +118,12 @@ class Scene extends Component {
     this.cube = cube.entity;
 
     this.loadModels()
-      .then(gltf => {
-        this.scene.add(gltf.scene);
+      .then(obj => {
+        console.log('model:', obj);
+        this.scene.add(obj);
+        //       ((obj as THREE.Mesh).material as THREE.Material).transparent = true;
+        //((obj as THREE.Mesh).material as THREE.Material).side = THREE.DoubleSide;
+        //((obj as THREE.Mesh).material as THREE.Material).alphaTest = 0.5;
       })
       .catch(err => {
         console.error('error loading models', err);
@@ -104,7 +150,6 @@ class Scene extends Component {
 
   animate = ms => {
     ms = Math.round(ms / 10);
-    console.log('ms', ms);
     const cube = this.cube;
     const cam = this.camera;
     cube.rotation.x += 0.01;
