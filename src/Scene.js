@@ -28,7 +28,7 @@ class Scene extends Component {
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 2000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
 
     //cube
@@ -52,10 +52,14 @@ class Scene extends Component {
     line.entity = new THREE.Line(line.geometry, line.material);
 
     // White directional light at half intensity shining from the top.
-    var dLight = new THREE.DirectionalLight('#ffffff', 20);
+    var dLight = new THREE.DirectionalLight('#fafaff', 10);
     dLight.position.set(0.3, 1, 0.3);
     dLight.castShadow = true;
+
     scene.add(dLight);
+
+    var aLight = new THREE.AmbientLight(0x404040, 7); // soft white light
+    scene.add(aLight);
 
     camera.position.z = 4;
 
