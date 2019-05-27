@@ -1,13 +1,33 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import Resize from './Resize';
+import tree1 from './models/tree-1/scene.gltf';
 
 class Scene extends Component {
+  loadModels = () => {
+    return new Promise((resolve, reject) => {
+      const loader = new GLTFLoader();
+
+      loader.load(
+        tree1,
+        function(gltf) {
+          resolve(gltf);
+          //scene.add( gltf.scene );
+        },
+        undefined,
+        function(error) {
+          reject(error);
+        }
+      );
+    });
+  };
   componentDidMount() {
     const width = this.mount.clientWidth;
     const height = this.mount.clientHeight;
 
     const scene = new THREE.Scene();
+
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
 
@@ -43,6 +63,14 @@ class Scene extends Component {
     this.camera = camera;
     this.renderer = renderer;
     this.cube = cube.entity;
+
+    this.loadModels()
+      .then(gltf => {
+        this.scene.add(gltf.scene);
+      })
+      .catch(err => {
+        console.error('error loading models', err);
+      });
 
     this.mount.appendChild(this.renderer.domElement);
     this.start();
