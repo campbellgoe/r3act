@@ -30,7 +30,6 @@ class Scene extends Component {
     ];
     line.geometry.vertices.push(...lineVerticies);
     line.entity = new THREE.Line(line.geometry, line.material);
-    line.mesh = new THREE.Mesh(line.geometry, line.material);
     camera.position.z = 4;
 
     scene.add(cube.entity);
