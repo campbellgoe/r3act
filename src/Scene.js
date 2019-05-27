@@ -50,6 +50,13 @@ class Scene extends Component {
     ];
     line.geometry.vertices.push(...lineVerticies);
     line.entity = new THREE.Line(line.geometry, line.material);
+
+    // White directional light at half intensity shining from the top.
+    var dLight = new THREE.DirectionalLight('#ffffff', 20);
+    dLight.position.set(0.3, 1, 0.3);
+    dLight.castShadow = true;
+    scene.add(dLight);
+
     camera.position.z = 4;
 
     scene.add(cube.entity);
@@ -91,11 +98,21 @@ class Scene extends Component {
     cancelAnimationFrame(this.frameId);
   };
 
-  animate = () => {
+  animate = ms => {
+    ms = Math.round(ms / 10);
+    console.log('ms', ms);
     const cube = this.cube;
+    const cam = this.camera;
     cube.rotation.x += 0.01;
     cube.rotation.y += 0.01;
+    cam.position.set(
+      Math.sin(ms / 160) * 300,
+      Math.cos(ms / 220) * 500 + 500,
+      Math.cos(ms / 300) * 800
+    );
+    var point = new THREE.Vector3(0, Math.sin(ms / 220) * 200 + 200, 0);
 
+    cam.lookAt(point);
     this.renderScene();
     this.frameId = window.requestAnimationFrame(this.animate);
   };
