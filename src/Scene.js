@@ -58,9 +58,14 @@ class Scene extends Component {
 
     const width = this.mount.clientWidth;
     const height = this.mount.clientHeight;
-
+    const brightness = 1;
+    const skyColour = '#939898'; //'#78a8bb';
     const scene = new THREE.Scene();
-
+    const fog = {
+      color: skyColour,
+      density: 0.009,
+    };
+    scene.fog = new THREE.FogExp2(fog.color, fog.density);
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.gammaOutput = true;
@@ -92,7 +97,7 @@ class Scene extends Component {
     // line.entity = new THREE.Line(line.geometry, line.material);
 
     // White directional light at half intensity shining from the top.
-    var dLight = new THREE.DirectionalLight('#fafaff', 1);
+    var dLight = new THREE.DirectionalLight('#fafaff', 0.3 * brightness);
     dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
     dLight.castShadow = true;
     dLight.shadow.camera.zoom = 1;
@@ -107,7 +112,7 @@ class Scene extends Component {
     //scene.add(helper);
     scene.add(dLight);
 
-    var aLight = new THREE.AmbientLight(0x404040, 0.4); // soft white light
+    var aLight = new THREE.AmbientLight(0x404040, 1 * brightness); // soft white light
     scene.add(aLight);
 
     camera.position.z = 4;
@@ -127,7 +132,7 @@ class Scene extends Component {
     //scene.add(cube.entity);
     //scene.add(line.entity);
 
-    renderer.setClearColor('#78a8bb');
+    renderer.setClearColor(skyColour);
     renderer.setSize(width, height);
     camera.position.set(0, 0, 100);
     camera.lookAt(0, 0, 0);
