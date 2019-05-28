@@ -74,13 +74,16 @@ class Scene extends Component {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.gammaOutput = true;
     renderer.gammaFactor = 2.2;
+    renderer.shadowMap.enabled = true;
     //cube
     const cube = {
-      geometry: new THREE.BoxGeometry(5, 100, 100),
-      material: new THREE.MeshBasicMaterial({ color: '#433F81' }),
+      geometry: new THREE.BoxBufferGeometry(400, 300, 300),
+      material: new THREE.MeshLambertMaterial({ color: '#433F81' }),
     };
     cube.entity = new THREE.Mesh(cube.geometry, cube.material);
-
+    cube.entity.castShadow = true;
+    cube.entity.receiveShadow = true;
+    cube.entity.position.y = 400;
     //line
     const line = {
       geometry: new THREE.Geometry(),
@@ -95,27 +98,28 @@ class Scene extends Component {
     line.entity = new THREE.Line(line.geometry, line.material);
 
     // White directional light at half intensity shining from the top.
-    var dLight = new THREE.DirectionalLight('#fafaff', 6);
-    dLight.position.set(0.3, 1, 0.3);
+    var dLight = new THREE.DirectionalLight('#fafaff', 3);
+    dLight.position.set(500, 500, 100);
     dLight.castShadow = true;
-
+    dLight.shadowCameraVisible = true;
     scene.add(dLight);
 
-    var aLight = new THREE.AmbientLight(0x404040, 4); // soft white light
+    var aLight = new THREE.AmbientLight(0x404040, 1); // soft white light
     scene.add(aLight);
 
     camera.position.z = 4;
 
     const plane = {
       geometry: new THREE.PlaneGeometry(10000, 10000, 1, 1),
-      material: new THREE.MeshBasicMaterial({
+      material: new THREE.MeshLambertMaterial({
         color: 0xffff00,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
       }),
     };
-    plane.geometry.rotateX(Math.PI / 2);
+    plane.geometry.rotateX(-(Math.PI / 2));
     plane.entity = new THREE.Mesh(plane.geometry, plane.material);
-
+    console.log('plane', plane.entity);
+    plane.entity.receiveShadow = true;
     scene.add(plane.entity);
     scene.add(cube.entity);
     scene.add(line.entity);
@@ -132,6 +136,11 @@ class Scene extends Component {
     this.loadModels()
       .then(obj => {
         console.log('model:', obj);
+        obj.traverse(o => {
+          if (o.isMesh) {
+            o.castShadow = true;
+          }
+        });
         this.scene.add(obj);
         //       ((obj as THREE.Mesh).material as THREE.Material).transparent = true;
         //((obj as THREE.Mesh).material as THREE.Material).side = THREE.DoubleSide;
