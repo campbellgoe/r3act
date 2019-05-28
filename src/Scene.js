@@ -70,7 +70,7 @@ class Scene extends Component {
 
     const scene = new THREE.Scene();
 
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 2000);
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.gammaOutput = true;
     renderer.gammaFactor = 2.2;
@@ -106,6 +106,17 @@ class Scene extends Component {
 
     camera.position.z = 4;
 
+    const plane = {
+      geometry: new THREE.PlaneGeometry(10000, 10000, 1, 1),
+      material: new THREE.MeshBasicMaterial({
+        color: 0xffff00,
+        side: THREE.DoubleSide,
+      }),
+    };
+    plane.geometry.rotateX(Math.PI / 2);
+    plane.entity = new THREE.Mesh(plane.geometry, plane.material);
+
+    scene.add(plane.entity);
     scene.add(cube.entity);
     scene.add(line.entity);
 
