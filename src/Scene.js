@@ -101,21 +101,19 @@ class Scene extends Component {
     dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
     dLight.castShadow = true;
     dLight.shadow.camera.zoom = 1;
-    dLight.shadow.camera.right = 15 * this.scl;
+    dLight.shadow.camera.right = 5 * this.scl;
     dLight.shadow.camera.left = -15 * this.scl;
     dLight.shadow.camera.top = 20 * this.scl;
     dLight.shadow.camera.bottom = -10 * this.scl;
     dLight.shadow.camera.far = 2200 * this.scl;
     dLight.shadow.mapSize.width = 1024;
     dLight.shadow.mapSize.height = 1024;
-    //var helper = new THREE.CameraHelper(dLight.shadow.camera);
-    //scene.add(helper);
+    var helper = new THREE.CameraHelper(dLight.shadow.camera);
+    scene.add(helper);
     scene.add(dLight);
 
     var aLight = new THREE.AmbientLight(0x404040, 1 * brightness); // soft white light
     scene.add(aLight);
-
-    camera.position.z = 4;
 
     const plane = {
       geometry: new THREE.PlaneGeometry(3000 * this.scl, 3000 * this.scl, 1, 1),
@@ -134,8 +132,35 @@ class Scene extends Component {
 
     renderer.setClearColor(skyColour);
     renderer.setSize(width, height);
-    camera.position.set(0, 0, 100);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(0, 8 * this.scl, 10 * this.scl);
+    camera.lookAt(0, 4 * this.scl, 0);
+    window.addEventListener('mousemove', e => {
+      const mx = e.pageX;
+      const w = window.innerWidth;
+      const rx = mx / w;
+      const ax = rx * 80 - 40;
+      camera.position.x = ax;
+      const my = e.pageY;
+      const h = window.innerHeight;
+      const ry = my / h;
+      const ay = ry * 80 - 20;
+      camera.position.z = ay;
+      camera.position.y = ay;
+      const sl = (w - mx) ** 0.5;
+      const sr = mx ** 0.5;
+      dLight.shadow.camera.left = -sl - 20;
+      dLight.shadow.camera.right = sr + 20;
+
+      dLight.shadow.camera.top = 10 * this.scl;
+      dLight.shadow.camera.bottom = -5 * this.scl;
+      // dLight.position.set(
+      //   400 * this.scl,
+      //   1000 * this.scl,
+      //   600 * this.scl
+      // );
+      // this.dLight.position.set(-x * 10, y * 10, -z * 10);
+      dLight.shadow.camera.updateProjectionMatrix();
+    });
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
@@ -171,6 +196,7 @@ class Scene extends Component {
             }
           }
         });
+        this.trees = obj;
         this.scene.add(obj);
         //       ((obj as THREE.Mesh).material as THREE.Material).transparent = true;
         //((obj as THREE.Mesh).material as THREE.Material).side = THREE.DoubleSide;
@@ -201,20 +227,25 @@ class Scene extends Component {
 
   animate = ms => {
     ms = Math.round(ms / 10);
+    const enableCamShowcase = false;
     //const cube = this.cube;
-    const cam = this.camera;
-    // cube.rotation.x += 0.01;
-    // cube.rotation.y += 0.01;
-    let x = Math.sin(ms / 160) * 12 * this.scl;
-    let y = Math.cos(ms / 320) * 9 * this.scl + 11 * this.scl;
-    let z = Math.cos(ms / 210) * 12 * this.scl;
-    cam.position.set(x, y, z);
+    if (enableCamShowcase) {
+      const cam = this.camera;
+      // cube.rotation.x += 0.01;
+      // cube.rotation.y += 0.01;
+      let x = Math.sin(ms / 160) * 12 * this.scl;
+      let y = Math.cos(ms / 320) * 9 * this.scl + 11 * this.scl;
+      let z = Math.cos(ms / 210) * 12 * this.scl;
+      cam.position.set(x, y, z);
+      y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
+      var point = new THREE.Vector3(0, y, 0);
+
+      cam.lookAt(point);
+    }
+    if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
     //this.dLight.position.set(-x * 10, y * 10, -z * 10);
     //this.dLight.shadow.camera.updateProjectionMatrix();
-    y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
-    var point = new THREE.Vector3(0, y, 0);
 
-    cam.lookAt(point);
     this.renderScene();
     this.frameId = window.requestAnimationFrame(this.animate);
   };
