@@ -136,63 +136,65 @@ class Scene extends Component {
     renderer.setSize(width, height);
     camera.position.set(0, 8 * this.scl, 10 * this.scl);
     camera.lookAt(0, 4 * this.scl, 0);
-    window.addEventListener('mousemove', e => {
-      const mx = e.pageX;
-      const w = window.innerWidth;
-      const rx = mx / w;
-      const ax = rx * 80 - 40;
-      camera.position.x = ax;
-      const my = e.pageY;
-      const h = window.innerHeight;
-      const ry = my / h;
-      const ay = ry * 80 - 20;
-      camera.position.z = ay;
-      camera.position.y = ay;
+    const onMove = (e) => {
+          const mx = e.pageX || e.touches && e.touches[0].pageX;
+          const w = window.innerWidth;
+       const rx = mx / w;
+       const ax = rx * 80 - 40;
+       camera.position.x = ax;
+       const my = e.pageY || e.touches && e.touches[0].pageY;
+       const h = window.innerHeight;
+       const ry = my / h;
+       const ay = ry * 80 - 20;
+       camera.position.z = ay;
+       camera.position.y = ay;
 
-      var raycaster = new THREE.Raycaster();
-      var center = new THREE.Vector2();
+       var raycaster = new THREE.Raycaster();
+       var center = new THREE.Vector2();
 
-      center.x = 0; //rx * 2 - 1;
-      center.y = 0; //ry * 2 - 1;
+       center.x = 0; //rx * 2 - 1;
+       center.y = 0; //ry * 2 - 1;
 
-      raycaster.setFromCamera(center, camera);
+       raycaster.setFromCamera(center, camera);
 
-      // calculate objects intersecting the picking ray
-      var intersects = raycaster.intersectObject(plane.entity);
-      let groundPoint;
-      for (var i = 0; i < intersects.length; i++) {
-        groundPoint = intersects[i].point;
-        //intersects[i].object.material.color.set(0xff0000);
-      }
-      if (intersects.length > 1) {
-        throw new Error('how can intersects be > 1?');
-      }
-      if (groundPoint) {
-        //cam view intersects with ground plane at groundPoint
-        //add groundPoint x,y,z to the directional light position and target point.
-        dLight.target.position.copy(groundPoint);
-        dLight.position.set(
-          400 * this.scl + groundPoint.x,
-          1000 * this.scl + groundPoint.y,
-          600 * this.scl + groundPoint.z
-        );
-      }
+       // calculate objects intersecting the picking ray
+       var intersects = raycaster.intersectObject(plane.entity);
+       let groundPoint;
+       for (var i = 0; i < intersects.length; i++) {
+         groundPoint = intersects[i].point;
+         //intersects[i].object.material.color.set(0xff0000);
+       }
+       if (intersects.length > 1) {
+         throw new Error('how can intersects be > 1?');
+       }
+       if (groundPoint) {
+         //cam view intersects with ground plane at groundPoint
+         //add groundPoint x,y,z to the directional light position and target point.
+         dLight.target.position.copy(groundPoint);
+         dLight.position.set(
+           400 * this.scl + groundPoint.x,
+           1000 * this.scl + groundPoint.y,
+           600 * this.scl + groundPoint.z
+         );
+       }
 
-      const sl = (w - mx) ** 0.5;
-      const sr = mx ** 0.5;
-      dLight.shadow.camera.left = -sl - 20;
-      dLight.shadow.camera.right = sr + 20;
+       const sl = (w - mx) ** 0.5;
+       const sr = mx ** 0.5;
+       dLight.shadow.camera.left = -sl - 20;
+       dLight.shadow.camera.right = sr + 20;
 
-      dLight.shadow.camera.top = 10 * this.scl;
-      dLight.shadow.camera.bottom = -5 * this.scl;
-      // dLight.position.set(
-      //   400 * this.scl,
-      //   1000 * this.scl,
-      //   600 * this.scl
-      // );
-      // this.dLight.position.set(-x * 10, y * 10, -z * 10);
-      dLight.shadow.camera.updateProjectionMatrix();
-    });
+       dLight.shadow.camera.top = 10 * this.scl;
+       dLight.shadow.camera.bottom = -5 * this.scl;
+       // dLight.position.set(
+       //   400 * this.scl,
+       //   1000 * this.scl,
+       //   600 * this.scl
+       // );
+       // this.dLight.position.set(-x * 10, y * 10, -z * 10);
+       dLight.shadow.camera.updateProjectionMatrix();
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove);
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
@@ -274,7 +276,7 @@ class Scene extends Component {
 
       cam.lookAt(point);
     }
-    if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
+    //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
     //this.dLight.position.set(-x * 10, y * 10, -z * 10);
     //this.dLight.shadow.camera.updateProjectionMatrix();
 
