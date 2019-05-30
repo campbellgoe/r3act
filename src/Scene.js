@@ -67,62 +67,62 @@ class Scene extends Component {
     y: 0.1,
     z: 0,
   };
-  createSky = (scene) => {
-    //  var controls, renderer;
-    import('three/examples/js/objects/Sky').then(() => {
-    var sky, sunSphere;
+  createSky = scene => {
+    return new Promise((resolve, reject) => {
+      //  var controls, renderer;
+      import('three/examples/js/objects/Sky')
+        .then(() => {
+          var sky, sunSphere;
 
           // Add Sky
-    sky = new window.THREE.Sky();
-    sky.scale.setScalar( 450000 );
-    scene.add( sky );
+          sky = new window.THREE.Sky();
+          sky.scale.setScalar(450000);
+          this.sky = sky;
+          scene.add(sky);
 
           // Add Sun Helper
-    sunSphere = new THREE.Mesh(
-      new THREE.SphereBufferGeometry( 20000, 16, 8 ),
-      new THREE.MeshBasicMaterial({
-        color: 0xffffff
-      })
-    );
-    sunSphere.position.y = - 700000;
-    sunSphere.visible = false;
-    scene.add( sunSphere );
+          sunSphere = new THREE.Mesh(
+            new THREE.SphereBufferGeometry(20000, 16, 8),
+            new THREE.MeshBasicMaterial({
+              color: 0xffffff,
+            })
+          );
+          sunSphere.position.y = -70000;
+          sunSphere.visible = false;
+          scene.add(sunSphere);
 
           /// GUI
 
-                  var effectController = {
+          var effectController = {
             turbidity: 10,
-                      rayleigh: 2,
+            rayleigh: 2,
             mieCoefficient: 0.005,
-                      mieDirectionalG: 0.8,
+            mieDirectionalG: 0.8,
             luminance: 1,
-                      inclination: 0.49, // elevation / inclination
-            azimuth: 0.25, // Facing front,
-                      sun: ! true
+            inclination: 0.2, // elevation / inclination
+            azimuth: 0.45, // Facing front,
+            sun: true,
           };
 
-                  var distance = 400000;
+          var distance = 70000;
 
+          var uniforms = sky.material.uniforms;
+          uniforms['turbidity'].value = effectController.turbidity;
+          uniforms['rayleigh'].value = effectController.rayleigh;
+          uniforms['luminance'].value = effectController.luminance;
+          uniforms['mieCoefficient'].value = effectController.mieCoefficient;
+          uniforms['mieDirectionalG'].value = effectController.mieDirectionalG;
 
-            var uniforms = sky.material.uniforms;
-            uniforms[ "turbidity" ].value = effectController.turbidity;
-                      uniforms[ "rayleigh" ].value = effectController.rayleigh;
-            uniforms[ "luminance" ].value = effectController.luminance;
-                      uniforms[ "mieCoefficient" ].value = effectController.mieCoefficient;
-            uniforms[ "mieDirectionalG" ].value = effectController.mieDirectionalG;
+          var theta = Math.PI * (effectController.inclination - 0.5);
+          var phi = 2 * Math.PI * (effectController.azimuth - 0.5);
 
-                      var theta = Math.PI * ( effectController.inclination - 0.5 );
-            var phi = 2 * Math.PI * ( effectController.azimuth - 0.5 );
+          sunSphere.position.x = distance * Math.cos(phi);
+          sunSphere.position.y = distance * Math.sin(phi) * Math.sin(theta);
+          sunSphere.position.z = distance * Math.sin(phi) * Math.cos(theta);
 
-                      sunSphere.position.x = distance * Math.cos( phi );
-            sunSphere.position.y = distance * Math.sin( phi ) * Math.sin( theta );
-                      sunSphere.position.z = distance * Math.sin( phi ) * Math.cos( theta );
+          sunSphere.visible = effectController.sun;
 
-            sunSphere.visible = effectController.sun;
-
-            uniforms[ "sunPosition" ].value.copy( sunSphere.position );
-
-
+          uniforms['sunPosition'].value.copy(sunSphere.position);
 
           /*        var gui = new dat.GUI();
 
@@ -139,12 +139,18 @@ class Scene extends Component {
           gui.add( effectController, "sun" ).onChange( guiChanged );
 
           guiChanged();
+          
 */
-    })
-    .catch((err) => {
-      alert(err);
+          resolve({
+            ...sunSphere.position,
+            distance,
+          });
+        })
+        .catch(err => {
+          reject(err);
+        });
     });
-  }
+  };
   sunX = 1000;
   sunY = 100;
   sunZ = 1000;
@@ -170,13 +176,40 @@ class Scene extends Component {
     renderer.gammaFactor = 2.2;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.createSky(scene).then(({radius, phi, theta})=>{
-      const skyLightCoords = new THREE.Vector3();
-      skyLightCoords.setFromSphericalCoords(radius, phi, theta);
+    this.createSky(scene).then(({ x, y, z, distance }) => {
+      const skyLightCoords = new THREE.Vector3(x, y, z);
+      //skyLightCoords.setFromSphericalCoords(radius, phi, theta);
       this.sunX = skyLightCoords.x;
       this.sunY = skyLightCoords.y;
       this.sunZ = skyLightCoords.z;
-      
+      this.sunD = distance;
+      var dLight = new THREE.DirectionalLight('#fafaff', 2 * brightness);
+      //dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
+      dLight.castShadow = true;
+      dLight.shadow.camera.zoom = 1;
+      /*dLight.shadow.camera.right = 5 * this.scl;
+      dLight.shadow.camera.left = -15 * this.scl;
+      dLight.shadow.camera.top = 20 * this.scl;
+      dLight.shadow.camera.bottom = -10 * this.scl;*/
+      dLight.shadow.camera.far = this.sunD * 2 * this.scl;
+      const maxTS = renderer.capabilities.maxTextureSize;
+      if (maxTS >= 4096) {
+        dLight.shadow.mapSize.width = 4096;
+        dLight.shadow.mapSize.height = 4096;
+      } else if (maxTS >= 2048) {
+        dLight.shadow.mapSize.width = 2048;
+        dLight.shadow.mapSize.height = 2048;
+      } else if (maxTS >= 1024) {
+        dLight.shadow.mapSize.width = 1024;
+        dLight.shadow.mapSize.height = 1024;
+      }
+
+      var dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
+      this.dLightHelper = dLightHelper;
+      scene.add(dLightHelper);
+      scene.add(dLight);
+      scene.add(dLight.target);
+      this.dLight = dLight;
     });
     //Float, theta : Float )
     //cube
@@ -204,32 +237,6 @@ class Scene extends Component {
     // line.entity = new THREE.Line(line.geometry, line.material);
 
     // White directional light at half intensity shining from the top.
-    var dLight = new THREE.DirectionalLight('#fafaff', 2 * brightness);
-    //dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
-    dLight.castShadow = true;
-    dLight.shadow.camera.zoom = 1;
-    /*dLight.shadow.camera.right = 5 * this.scl;
-    dLight.shadow.camera.left = -15 * this.scl;
-    dLight.shadow.camera.top = 20 * this.scl;
-    dLight.shadow.camera.bottom = -10 * this.scl;*/
-    dLight.shadow.camera.far = 2200 * this.scl;
-    const maxTS = renderer.capabilities.maxTextureSize;
-    if (maxTS >= 4096) {
-      dLight.shadow.mapSize.width = 4096;
-      dLight.shadow.mapSize.height = 4096;
-    } else if (maxTS >= 2048) {
-      dLight.shadow.mapSize.width = 2048;
-      dLight.shadow.mapSize.height = 2048;
-    } else if (maxTS >= 1024) {
-      dLight.shadow.mapSize.width = 1024;
-      dLight.shadow.mapSize.height = 1024;
-    }
-
-    var helper = new THREE.CameraHelper(dLight.shadow.camera);
-    this.helper = helper;
-    scene.add(helper);
-    scene.add(dLight);
-    scene.add(dLight.target);
 
     var aLight = new THREE.AmbientLight(skyColour, 0.2 * brightness); // soft white light
     scene.add(aLight);
@@ -290,8 +297,8 @@ class Scene extends Component {
       const ay = ry * 80 * this.scl - 20 * this.scl;
       const o = this.o;
       const orbitCamera = () => {
-        const zoom = Math.max(0.05 * this.scl, ry);
-        const zoomAbs = 40 * this.scl * zoom;
+        let zoom = Math.max(0.05 * this.scl, ry);
+        let zoomAbs = 40 * this.scl * zoom;
         const camOrbitAngle = rx * Math.PI * 2;
         //camera.position.x = ax;
         camera.position.x = Math.cos(camOrbitAngle) * zoomAbs + o.x;
@@ -299,6 +306,9 @@ class Scene extends Component {
         camera.position.z = Math.sin(camOrbitAngle) * zoomAbs + o.z;
         //camera.position.z = ay;
         camera.position.y = Math.max(ay, 3 * this.scl) + o.y;
+
+        zoom = Math.max(0.075 * this.scl, zoom);
+        zoomAbs = 40 * this.scl * zoom;
 
         //const sl = (w - mx) ** 0.5;
         //const sr = mx ** 0.5;
@@ -349,16 +359,22 @@ class Scene extends Component {
         // sb = st;
         // sl = st;
         const sMax = 50 * this.scl;
-        const sMin = 2 * this.scl;
-        dLight.shadow.camera.left =
-          -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sl)) * this.scl;
-        dLight.shadow.camera.right =
-          Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sr)) * this.scl;
+        const sMin = 3 * this.scl;
+        const dLight = this.dLight;
+        const dLightHelper = this.dLightHelper;
+        if (dLight) {
+          dLight.shadow.camera.left =
+            -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sl)) * this.scl;
+          dLight.shadow.camera.right =
+            Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sr)) * this.scl;
 
-        dLight.shadow.camera.top =
-          Math.max(sMin, Math.min(sMax, zoomAbs ** sm * st)) * this.scl;
-        dLight.shadow.camera.bottom =
-          -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sb)) * this.scl;
+          dLight.shadow.camera.top =
+            Math.max(sMin, Math.min(sMax, zoomAbs ** sm * st)) * this.scl;
+          dLight.shadow.camera.bottom =
+            -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sb)) * this.scl;
+          dLight.shadow.camera.updateProjectionMatrix();
+          dLightHelper.update();
+        }
         camera.lookAt(o.x, o.y * this.scl, o.z);
       };
 
@@ -375,8 +391,6 @@ class Scene extends Component {
         orbitCamera();
         //translateShadow();
       }
-      dLight.shadow.camera.updateProjectionMatrix();
-      helper.update();
     };
     document.addEventListener('mousedown', onMove);
     document.addEventListener('mousemove', onMove);
@@ -386,17 +400,15 @@ class Scene extends Component {
     this.camera = camera;
     this.renderer = renderer;
     //this.cube = cube.entity;
-    this.dLight = dLight;
-
     this.loadModels()
       .then(objOriginal => {
         const objs = [objOriginal];
-        for (let i = 0; i < 250; i++) {
+        for (let i = 0; i < 600; i++) {
           const newObj = objOriginal.clone();
           newObj.position.set(
-            Math.random() * 800 - 400,
+            Math.random() * 1200 - 600,
             0,
-            Math.random() * 800 - 400
+            Math.random() * 1200 - 600
           );
           newObj.rotation.y = Math.random() * Math.PI * 2;
           objs.push(newObj);
@@ -490,6 +502,7 @@ class Scene extends Component {
       };
       const translateShadow = () => {
         const dLight = this.dLight;
+        if (!dLight) return;
         var raycaster = new THREE.Raycaster();
         var center = new THREE.Vector2();
 
