@@ -62,6 +62,11 @@ class Scene extends Component {
     return distance;
   };
   mouseIsDown = false;
+  o = {
+    x: 0,
+    y: 0.1,
+    z: 0,
+  };
   componentDidMount() {
     window.THREE = THREE;
 
@@ -147,14 +152,15 @@ class Scene extends Component {
     plane.entity = new THREE.Mesh(plane.geometry, plane.material);
     console.log('plane', plane.entity);
     plane.entity.receiveShadow = true;
+    this.plane = plane;
     scene.add(plane.entity);
     //scene.add(cube.entity);
     //scene.add(line.entity);
 
     renderer.setClearColor(skyColour);
     renderer.setSize(width, height);
-    camera.position.set(0, 8 * this.scl, 10 * this.scl);
-    camera.lookAt(0, 4 * this.scl, 0);
+    //camera.position.set(0, 8 * this.scl, 10 * this.scl);
+    //camera.lookAt(0, 4 * this.scl, 0);
     const onMove = e => {
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -178,20 +184,23 @@ class Scene extends Component {
           this.mouseIsDown = true;
         }
       }
+      const rx = mx / w;
+      this.rx = rx;
+      const ax = rx * 80 * this.scl - 40 * this.scl;
+      const ry = my / h;
+      this.ry = ry;
+      const ay = ry * 80 * this.scl - 20 * this.scl;
+      const o = this.o;
       const orbitCamera = () => {
-        const rx = mx / w;
-        const ax = rx * 80 * this.scl - 40 * this.scl;
-        const ry = my / h;
-        const ay = ry * 80 * this.scl - 20 * this.scl;
         const zoom = Math.max(0.05 * this.scl, ry);
         const zoomAbs = 40 * this.scl * zoom;
         const camOrbitAngle = rx * Math.PI * 2;
         //camera.position.x = ax;
-        camera.position.x = Math.cos(camOrbitAngle) * zoomAbs;
+        camera.position.x = Math.cos(camOrbitAngle) * zoomAbs + o.x;
 
-        camera.position.z = Math.sin(camOrbitAngle) * zoomAbs;
+        camera.position.z = Math.sin(camOrbitAngle) * zoomAbs + o.z;
         //camera.position.z = ay;
-        camera.position.y = Math.max(ay, 3 * this.scl);
+        camera.position.y = Math.max(ay, 3 * this.scl) + o.y;
 
         //const sl = (w - mx) ** 0.5;
         //const sr = mx ** 0.5;
@@ -252,43 +261,9 @@ class Scene extends Component {
           Math.max(sMin, Math.min(sMax, zoomAbs ** sm * st)) * this.scl;
         dLight.shadow.camera.bottom =
           -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sb)) * this.scl;
+        camera.lookAt(o.x, o.y * this.scl, o.z);
       };
 
-      const translateCamera = () => {
-        var raycaster = new THREE.Raycaster();
-        var center = new THREE.Vector2();
-
-        center.x = 0; //rx * 2 - 1;
-        center.y = 0; //ry * 2 - 1;
-        camera.lookAt(0, 0.1 * this.scl, 0);
-        raycaster.setFromCamera(center, camera);
-
-        // calculate objects intersecting the picking ray
-        var intersects = raycaster.intersectObject(plane.entity);
-        let groundPoint;
-        let intersection;
-        if (intersects.length > 1) {
-          console.warn('how can intersects a flat plane be > 1?', intersects);
-          //throw new Error('how can intersects be > 1?');
-        }
-        if (Array.isArray(intersects) && intersects.length > 0) {
-          intersection = intersects[0];
-        }
-        if (intersection) {
-          groundPoint = intersection.point;
-        }
-
-        if (groundPoint) {
-          //cam view intersects with ground plane at groundPoint
-          //add groundPoint x,y,z to the directional light position and target point.
-          dLight.target.position.copy(groundPoint);
-          dLight.position.set(
-            1000 * this.scl + groundPoint.x,
-            1000 * this.scl + groundPoint.y,
-            1000 * this.scl + groundPoint.z
-          );
-        }
-      };
       // dLight.position.set(
       //   400 * this.scl,
       //   1000 * this.scl,
@@ -296,10 +271,11 @@ class Scene extends Component {
       // );
       // this.dLight.position.set(-x * 10, y * 10, -z * 10);
       if (this.mouseIsDown) {
-        translateCamera();
+        //translateCamera();
+        //translateShadow();
       } else {
         orbitCamera();
-        translateCamera();
+        //translateShadow();
       }
       dLight.shadow.camera.updateProjectionMatrix();
       helper.update();
@@ -388,20 +364,69 @@ class Scene extends Component {
   animate = ms => {
     ms = Math.round(ms / 10);
     const enableCamShowcase = false;
+    const cam = this.camera;
+    const o = this.o;
     //const cube = this.cube;
     if (enableCamShowcase) {
-      const cam = this.camera;
       // cube.rotation.x += 0.01;
       // cube.rotation.y += 0.01;
       let x = Math.sin(ms / 160) * 12 * this.scl;
       let y = Math.cos(ms / 320) * 9 * this.scl + 11 * this.scl;
       let z = Math.cos(ms / 210) * 12 * this.scl;
-      cam.position.set(x, y, z);
-      y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
-      var point = new THREE.Vector3(0, y, 0);
 
-      cam.lookAt(point);
+      cam.position.set(o.x, o.y, o.z);
+      y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
+      //var point = new THREE.Vector3(0, y, 0);
+
+      //cam.lookAt(point);
       this.helper.update();
+    }
+
+    if (this.mouseIsDown) {
+      const translateCamera = () => {
+        const xd = this.rx - 0.5;
+        o.x += xd;
+        cam.position.x += xd;
+      };
+      const translateShadow = () => {
+        const dLight = this.dLight;
+        var raycaster = new THREE.Raycaster();
+        var center = new THREE.Vector2();
+
+        center.x = 0; //rx * 2 - 1;
+        center.y = 0; //ry * 2 - 1;
+
+        raycaster.setFromCamera(center, cam);
+
+        // calculate objects intersecting the picking ray
+        var intersects = raycaster.intersectObject(this.plane.entity);
+        let groundPoint;
+        let intersection;
+        if (intersects.length > 1) {
+          console.warn('how can intersects a flat plane be > 1?', intersects);
+          //throw new Error('how can intersects be > 1?');
+        }
+        if (Array.isArray(intersects) && intersects.length > 0) {
+          intersection = intersects[0];
+        }
+        if (intersection) {
+          groundPoint = intersection.point;
+        }
+
+        if (groundPoint) {
+          //cam view intersects with ground plane at groundPoint
+          //add groundPoint x,y,z to the directional light position and target point.
+          dLight.target.position.copy(groundPoint);
+          dLight.position.set(
+            1000 * this.scl + groundPoint.x,
+            1000 * this.scl + groundPoint.y,
+            1000 * this.scl + groundPoint.z
+          );
+        }
+        dLight.shadow.camera.updateProjectionMatrix();
+      };
+      translateCamera();
+      translateShadow();
     }
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
     //this.dLight.position.set(-x * 10, y * 10, -z * 10);
