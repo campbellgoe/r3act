@@ -73,11 +73,11 @@ class Scene extends Component {
     const width = this.mount.clientWidth;
     const height = this.mount.clientHeight;
     const brightness = 1;
-    const skyColour = '#939898'; //'#78a8bb';
+    const skyColour = 'rgba(35,139,255,1)'; //'#78a8bb';
     const scene = new THREE.Scene();
     const fog = {
       color: skyColour,
-      density: 0.0009,
+      density: 0.001,
     };
     scene.fog = new THREE.FogExp2(fog.color, fog.density);
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
@@ -111,7 +111,7 @@ class Scene extends Component {
     // line.entity = new THREE.Line(line.geometry, line.material);
 
     // White directional light at half intensity shining from the top.
-    var dLight = new THREE.DirectionalLight('#fafaff', 0.3 * brightness);
+    var dLight = new THREE.DirectionalLight('#fafaff', 2 * brightness);
     dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
     dLight.castShadow = true;
     dLight.shadow.camera.zoom = 1;
@@ -138,9 +138,14 @@ class Scene extends Component {
     scene.add(dLight);
     scene.add(dLight.target);
 
-    var aLight = new THREE.AmbientLight(0x404040, 1 * brightness); // soft white light
+    var aLight = new THREE.AmbientLight(skyColour, 0.2 * brightness); // soft white light
     scene.add(aLight);
-
+    const hLight = new THREE.HemisphereLight(
+      skyColour,
+      'rgba(88,67,35,1)',
+      0.5 * brightness
+    );
+    scene.add(hLight);
     const plane = {
       geometry: new THREE.PlaneGeometry(3000 * this.scl, 3000 * this.scl, 1, 1),
       material: new THREE.MeshLambertMaterial({
@@ -293,7 +298,7 @@ class Scene extends Component {
     this.loadModels()
       .then(objOriginal => {
         const objs = [objOriginal];
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 250; i++) {
           const newObj = objOriginal.clone();
           newObj.position.set(
             Math.random() * 800 - 400,
@@ -307,10 +312,12 @@ class Scene extends Component {
           console.log('model:', obj);
           obj.scale.set(0.015 * this.scl, 0.015 * this.scl, 0.015 * this.scl);
           obj.castShadow = true;
+          obj.receiveShadow = true;
 
           obj.traverse(o => {
             if (o.isMesh) {
               o.castShadow = true;
+              o.receiveShadow = true;
 
               if (o.name.includes('leaf')) {
                 //this allows transparent textures such a tree leaves
