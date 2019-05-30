@@ -145,6 +145,9 @@ class Scene extends Component {
       alert(err);
     });
   }
+  sunX = 1000;
+  sunY = 100;
+  sunZ = 1000;
   componentDidMount() {
     window.THREE = THREE;
 
@@ -153,18 +156,29 @@ class Scene extends Component {
     const brightness = 1;
     const skyColour = 'rgba(35,139,255,1)'; //'#78a8bb';
     const scene = new THREE.Scene();
-    const fog = {
-      color: skyColour,
+    /*const fog = {
+      color: 'rgba(255,255,230,0.1)',
       density: 0.001,
+      near: 60 * this.scl,
+      far: 2000 * this.scl,
     };
-    scene.fog = new THREE.FogExp2(fog.color, fog.density);
+    */
+    //scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.gammaOutput = true;
     renderer.gammaFactor = 2.2;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.createSky(scene);
+    this.createSky(scene).then(({radius, phi, theta})=>{
+      const skyLightCoords = new THREE.Vector3();
+      skyLightCoords.setFromSphericalCoords(radius, phi, theta);
+      this.sunX = skyLightCoords.x;
+      this.sunY = skyLightCoords.y;
+      this.sunZ = skyLightCoords.z;
+      
+    });
+    //Float, theta : Float )
     //cube
     // const cube = {
     //   geometry: new THREE.BoxBufferGeometry(2, 15, 0.5),
@@ -191,13 +205,13 @@ class Scene extends Component {
 
     // White directional light at half intensity shining from the top.
     var dLight = new THREE.DirectionalLight('#fafaff', 2 * brightness);
-    dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
+    //dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
     dLight.castShadow = true;
     dLight.shadow.camera.zoom = 1;
-    dLight.shadow.camera.right = 5 * this.scl;
+    /*dLight.shadow.camera.right = 5 * this.scl;
     dLight.shadow.camera.left = -15 * this.scl;
     dLight.shadow.camera.top = 20 * this.scl;
-    dLight.shadow.camera.bottom = -10 * this.scl;
+    dLight.shadow.camera.bottom = -10 * this.scl;*/
     dLight.shadow.camera.far = 2200 * this.scl;
     const maxTS = renderer.capabilities.maxTextureSize;
     if (maxTS >= 4096) {
@@ -504,9 +518,9 @@ class Scene extends Component {
           //add groundPoint x,y,z to the directional light position and target point.
           dLight.target.position.copy(groundPoint);
           dLight.position.set(
-            1000 * this.scl + groundPoint.x,
-            1000 * this.scl + groundPoint.y,
-            1000 * this.scl + groundPoint.z
+            this.sunX * this.scl + groundPoint.x,
+            this.sunY * this.scl + groundPoint.y,
+            this.sunZ * this.scl + groundPoint.z
           );
         }
         dLight.shadow.camera.updateProjectionMatrix();
