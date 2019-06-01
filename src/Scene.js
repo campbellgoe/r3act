@@ -4,6 +4,20 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import Resize from './Resize';
 import treeGLTF from './models/tree-1/scene.gltf';
 import treeFBX from './models/tree-1-fbx/trees1.fbx';
+const getTouchesXY = ts => {
+  const pos = {
+    x: 0,
+    y: 0,
+  };
+  if (ts.length === 1) {
+    pos.x = ts[0].pageX;
+    pos.y = ts[0].pageY;
+  } else if (ts.length >= 2) {
+    pos.x = (ts[0].pageX + ts[1].pageX) / 2;
+    pos.y = (ts[0].pageY + ts[1].pageY) / 2;
+  }
+  return pos;
+};
 class Scene extends Component {
   loadModels = () => {
     return new Promise((resolve, reject) => {
@@ -61,7 +75,7 @@ class Scene extends Component {
     const distance = phi > pi ? tau - phi : phi;
     return distance;
   };
-  mouseIsDown = false;
+  //camera x,y,z offset
   o = {
     x: 0,
     y: 1,
@@ -167,6 +181,15 @@ class Scene extends Component {
     const b = ay - by;
     return (a ** 2 + b ** 2) ** 0.5;
   };
+  MOUSE = {
+    none: -1,
+    left: 0,
+    middle: 1,
+    right: 2,
+  };
+  mouseDownType = -1;
+  mx = 0;
+  my = 0;
   componentDidMount() {
     window.THREE = THREE;
 
@@ -281,32 +304,47 @@ class Scene extends Component {
     const onMove = e => {
       const w = this.width;
       const h = this.height;
-      let mx, my;
-      if (e.type === 'mousedown') {
-        this.mouseIsDown = true;
-      } else if (e.type === 'mouseup') {
-        this.mouseIsDown = false;
-      }
+      let mx = this.mx;
+      let my = this.my;
       if (e.type.startsWith('mouse')) {
-        mx = e.pageX;
-        my = e.pageY;
-      } else if (e.type === 'touchmove') {
-        if (e.touches.length === 1) {
-          mx = e.touches[0].pageX;
-          my = h - e.touches[0].pageY;
-          this.mouseIsDown = false;
-        } else if (e.touches.length === 2) {
-          mx = (e.touches[0].pageX + e.touches[1].pageX) / 2;
-          my = (e.touches[0].pageY + e.touches[1].pageY) / 2;
-          this.mouseIsDown = true;
+        if (e.type.endsWith('down')) {
+          this.mouseDownType = e.button;
+          mx = e.pageX;
+          my = e.pageY;
+        }
+        if (e.type.endsWith('move')) {
+          mx = e.pageX;
+          my = e.pageY;
+        }
+        if (e.type.endsWith('up')) {
+          this.mouseDownType = this.MOUSE.none;
+        }
+      } else if (e.type.startsWith('touch')) {
+        if (e.type.endsWith('start')) {
+          if (e.touches.length === 1) {
+            this.mouseDownType = this.MOUSE.left;
+          } else if (e.touches.length >= 2) {
+            this.mouseDownType = this.MOUSE.right;
+          }
+          const pos = getTouchesXY(e.touches);
+          mx = pos.x;
+          my = pos.y;
+        }
+        if (e.type.endsWith('move')) {
+          const pos = getTouchesXY(e.touches);
+          mx = pos.x;
+          my = pos.y;
+        }
+        if (e.type.endsWith('end')) {
+          if (e.touches.length === 0) {
+            this.mouseDownType = this.MOUSE.none;
+          }
         }
       }
       this.mx = mx;
       this.my = my;
-      const { drx, dry, rx, ry } = this.calculatePositionsFromMouse(
-        this.mx,
-        this.my
-      );
+
+      const { drx, dry, rx, ry } = this.calculatePositionsFromMouse(mx, my);
       if (e.type === 'mousedown' || e.type === 'touchstart') {
         this.drx = rx % 1;
         this.dry = ry % 1;
@@ -315,7 +353,7 @@ class Scene extends Component {
         //this.drx
         this.drx = rx % 1;
         this.dry = Math.max(0.05, ry);
-        console.log('dry:', ry);
+        console.log('dry:', ry, 'mx', mx, 'my', my);
       }
       // dLight.position.set(
       //   400 * this.scl,
@@ -323,18 +361,23 @@ class Scene extends Component {
       //   600 * this.scl
       // );
       // this.dLight.position.set(-x * 10, y * 10, -z * 10);
-      if (this.mouseIsDown) {
+      if (this.mouseDownType === this.MOUSE.left) {
         this.orbitCamera();
-        //translateCamera();
-        //translateShadow();
-      } else {
-        //translateShadow();
       }
+      //translateCamera();
+      //translateShadow();
     };
+    document.addEventListener('contextmenu', e => {
+      //disable right click menu
+      e.preventDefault();
+      return false;
+    });
     document.addEventListener('mousedown', onMove);
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onMove);
+    document.addEventListener('touchstart', onMove);
     document.addEventListener('touchmove', onMove);
+    document.addEventListener('touchend', onMove);
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
@@ -549,51 +592,51 @@ class Scene extends Component {
       this.helper.update();
     }
 
-    if (this.mouseIsDown) {
-      // const translateCamera = () => {
-      //   const xd = this.rx - 0.5;
-      //   o.x += xd;
-      //   cam.position.x += xd;
-      // };
-      const translateShadow = () => {
-        const dLight = this.dLight;
-        if (!dLight) return;
-        var raycaster = new THREE.Raycaster();
-        var center = new THREE.Vector2();
+    // const translateCamera = () => {
+    //   const xd = this.rx - 0.5;
+    //   o.x += xd;
+    //   cam.position.x += xd;
+    // };
+    const translateShadow = () => {
+      const dLight = this.dLight;
+      if (!dLight) return;
+      var raycaster = new THREE.Raycaster();
+      var center = new THREE.Vector2();
 
-        center.x = 0; //rx * 2 - 1;
-        center.y = 0; //ry * 2 - 1;
+      center.x = 0; //rx * 2 - 1;
+      center.y = 0; //ry * 2 - 1;
 
-        raycaster.setFromCamera(center, cam);
+      raycaster.setFromCamera(center, cam);
 
-        // calculate objects intersecting the picking ray
-        var intersects = raycaster.intersectObject(this.plane.entity);
-        let groundPoint;
-        let intersection;
-        if (intersects.length > 1) {
-          console.warn('how can intersects a flat plane be > 1?', intersects);
-          //throw new Error('how can intersects be > 1?');
-        }
-        if (Array.isArray(intersects) && intersects.length > 0) {
-          intersection = intersects[0];
-        }
-        if (intersection) {
-          groundPoint = intersection.point;
-        }
+      // calculate objects intersecting the picking ray
+      var intersects = raycaster.intersectObject(this.plane.entity);
+      let groundPoint;
+      let intersection;
+      if (intersects.length > 1) {
+        console.warn('how can intersects a flat plane be > 1?', intersects);
+        //throw new Error('how can intersects be > 1?');
+      }
+      if (Array.isArray(intersects) && intersects.length > 0) {
+        intersection = intersects[0];
+      }
+      if (intersection) {
+        groundPoint = intersection.point;
+      }
 
-        if (groundPoint) {
-          //cam view intersects with ground plane at groundPoint
-          //add groundPoint x,y,z to the directional light position and target point.
-          dLight.target.position.copy(groundPoint);
-          dLight.position.set(
-            this.sunX * this.scl + groundPoint.x,
-            this.sunY * this.scl + groundPoint.y,
-            this.sunZ * this.scl + groundPoint.z
-          );
-        }
-        dLight.shadow.camera.updateProjectionMatrix();
-      };
-      //translateCamera();
+      if (groundPoint) {
+        //cam view intersects with ground plane at groundPoint
+        //add groundPoint x,y,z to the directional light position and target point.
+        dLight.target.position.copy(groundPoint);
+        dLight.position.set(
+          this.sunX * this.scl + groundPoint.x,
+          this.sunY * this.scl + groundPoint.y,
+          this.sunZ * this.scl + groundPoint.z
+        );
+      }
+      dLight.shadow.camera.updateProjectionMatrix();
+    };
+    //translateCamera();
+    if (this.mouseDownType === this.MOUSE.left) {
       translateShadow();
     }
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
