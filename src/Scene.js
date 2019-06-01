@@ -3,7 +3,21 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import Resize from './Resize';
 import treeGLTF from './models/tree-1/scene.gltf';
+// region [ rgba(99,145,132,0.1) ]
 //import treeFBX from './models/tree-1-fbx/trees1.fbx';
+const randomPositionInCircle = radius => {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = Math.sqrt(Math.random() * radius * radius);
+  return {
+    x: Math.cos(angle) * dist,
+    y: Math.sin(angle) * dist,
+  };
+};
+// const distanceSquared = ({ x: ax, y: ay }, { x: bx, y: by }) => {
+//   const a = ax - bx;
+//   const b = ay - by;
+//   return (a ** 2 + b ** 2) ** 0.5;
+// };
 const getTouchesXY = ts => {
   const pos = {
     x: 0,
@@ -77,10 +91,10 @@ const angularDistance = (alpha, beta) => {
   const distance = phi > pi ? tau - phi : phi;
   return distance;
 };
+//endregion
 class Scene extends Component {
-  loadModels = loadModels;
+  //scene scale
   scl = 3;
-  angularDistance = angularDistance;
   //camera x,y,z offset
   o = {
     x: 0,
@@ -91,6 +105,22 @@ class Scene extends Component {
   sunX = 0;
   sunY = 0;
   sunZ = 0;
+  MOUSE = {
+    none: -1,
+    left: 0,
+    middle: 1,
+    right: 2,
+  };
+  mouseDownType = -1;
+  mx = 0;
+  my = 0;
+  colours = {
+    sky: '#6f97ad',
+    sunlight: '#fafaff',
+    groundLight: '#2e8c69',
+    ground: '#5e8c2e',
+  };
+  brightness = 1;
   createSky = (
     settings = {
       turbidity: 10,
@@ -171,51 +201,45 @@ class Scene extends Component {
         });
     });
   };
-  randomPositionInCircle = radius => {
-    const angle = Math.random() * Math.PI * 2;
-    const dist = Math.sqrt(Math.random() * radius * radius);
-    return {
-      x: Math.cos(angle) * dist,
-      y: Math.sin(angle) * dist,
-    };
-  };
-  distanceSquared = ({ x: ax, y: ay }, { x: bx, y: by }) => {
-    const a = ax - bx;
-    const b = ay - by;
-    return (a ** 2 + b ** 2) ** 0.5;
-  };
-  MOUSE = {
-    none: -1,
-    left: 0,
-    middle: 1,
-    right: 2,
-  };
-  mouseDownType = -1;
-  mx = 0;
-  my = 0;
-  componentDidMount() {
-    window.THREE = THREE;
+  setupScene = () => {
+    const { width, height, colours } = this;
 
-    const width = this.mount.clientWidth;
-    const height = this.mount.clientHeight;
-    const brightness = 1;
-    const skyColour = 'rgba(35,139,255,1)'; //'#78a8bb';
-    const scene = new THREE.Scene();
-    this.scene = scene;
-    /*const fog = {
-      color: 'rgba(255,255,230,0.1)',
-      density: 0.001,
-      near: 60 * this.scl,
-      far: 2000 * this.scl,
-    };
-    */
-    //scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
+    this.camera = camera;
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = renderer;
     renderer.gammaOutput = true;
     renderer.gammaFactor = 2.2;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setClearColor(colours.sky);
+    renderer.setSize(width, height);
+
+    this.createAndSetupSky();
+
+    this.createGround();
+
+    //this.createAndSetupFog();
+
+    this.loadAndSetupModels();
+  };
+  createAndSetupSky = () => {
+    const { scene, renderer, colours, brightness } = this;
+
+    //setup ambient light
+
+    var aLight = new THREE.AmbientLight(colours.sky, 0.2 * brightness); // soft white light
+    scene.add(aLight);
+    const hLight = new THREE.HemisphereLight(
+      colours.sky,
+      colours.groundLight,
+      0.5 * brightness
+    );
+    scene.add(hLight);
+    // this.ambientLight = aLight;
+    // this.hemiLight = hLight;
+
+    //create and setup the sky and sunlight
     this.createSky().then(({ x, y, z, distance }) => {
       const skyLightCoords = new THREE.Vector3(x, y, z);
       //skyLightCoords.setFromSphericalCoords(radius, phi, theta);
@@ -223,7 +247,7 @@ class Scene extends Component {
       this.sunY = skyLightCoords.y;
       this.sunZ = skyLightCoords.z;
       this.sunD = distance;
-      var dLight = new THREE.DirectionalLight('#fafaff', 2 * brightness);
+      var dLight = new THREE.DirectionalLight(colours.sunlight, 2 * brightness);
       //dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
       dLight.castShadow = true;
       dLight.shadow.camera.zoom = 1;
@@ -251,45 +275,13 @@ class Scene extends Component {
       scene.add(dLight.target);
       this.dLight = dLight;
     });
-    //Float, theta : Float )
-    //cube
-    // const cube = {
-    //   geometry: new THREE.BoxBufferGeometry(2, 15, 0.5),
-    //   material: new THREE.MeshLambertMaterial({ color: '#433F81' }),
-    // };
-    // cube.entity = new THREE.Mesh(cube.geometry, cube.material);
-    // cube.entity.castShadow = true;
-    // cube.entity.receiveShadow = true;
-    // cube.entity.position.y = 5;
-    // cube.entity.position.x = 8;
-    // cube.entity.position.z = 6;
-    //line
-    // const line = {
-    //   geometry: new THREE.Geometry(),
-    //   material: new THREE.LineBasicMaterial({ color: '#0000ff' }),
-    // };
-    // const lineVerticies = [
-    //   new THREE.Vector3(-10, 0, 0),
-    //   new THREE.Vector3(0, 5, 0),
-    //   new THREE.Vector3(10, 0, 0),
-    // ];
-    // line.geometry.vertices.push(...lineVerticies);
-    // line.entity = new THREE.Line(line.geometry, line.material);
-
-    // White directional light at half intensity shining from the top.
-
-    var aLight = new THREE.AmbientLight(skyColour, 0.2 * brightness); // soft white light
-    scene.add(aLight);
-    const hLight = new THREE.HemisphereLight(
-      skyColour,
-      'rgba(88,67,35,1)',
-      0.5 * brightness
-    );
-    scene.add(hLight);
+  };
+  createGround = () => {
+    const { scene, colours } = this;
     const plane = {
-      geometry: new THREE.PlaneGeometry(3000 * this.scl, 3000 * this.scl, 1, 1),
+      geometry: new THREE.PlaneGeometry(3000 * this.scl, 3000 * this.scl),
       material: new THREE.MeshLambertMaterial({
-        color: '#364823',
+        color: colours.ground,
         side: THREE.FrontSide,
       }),
     };
@@ -298,11 +290,78 @@ class Scene extends Component {
     plane.entity.receiveShadow = true;
     this.plane = plane;
     scene.add(plane.entity);
+  };
+  // createAndSetupFog = () => {
+  //   const fog = {
+  //     color: 'rgba(255,255,230,0.1)',
+  //     density: 0.001,
+  //     near: 60 * this.scl,
+  //     far: 2000 * this.scl,
+  //   };
+  //   this.scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
+  // }
+  loadAndSetupModels = () => {
+    loadModels([{ type: 'gltf', model: treeGLTF }])
+      .then(objOriginal => {
+        objOriginal = objOriginal[0];
+        const objs = [objOriginal];
+        for (let i = 0; i < 200; i++) {
+          const newObj = objOriginal.clone();
+          const rndInCircle = randomPositionInCircle(500);
+          newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
+          newObj.rotation.y = Math.random() * Math.PI * 2;
+          objs.push(newObj);
+        }
+        objs.forEach(obj => {
+          obj.scale.set(0.015 * this.scl, 0.015 * this.scl, 0.015 * this.scl);
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+
+          obj.traverse(o => {
+            if (o.isMesh) {
+              o.castShadow = true;
+              o.receiveShadow = true;
+
+              if (o.name.includes('leaf')) {
+                //this allows transparent textures such a tree leaves
+                o.material.transparent = true;
+                //this removes depth issues where leaves behind were blacked
+                //out behind leaves in front
+                o.material.alphaTest = 0.5;
+                var customDepthMaterial = new THREE.MeshDepthMaterial({
+                  depthPacking: THREE.RGBADepthPacking,
+
+                  map: o.material.map, // or, alphaMap: myAlphaMap
+
+                  alphaTest: 0.5,
+                });
+
+                o.customDepthMaterial = customDepthMaterial;
+              }
+            }
+          });
+          this.scene.add(obj);
+        });
+        //       ((obj as THREE.Mesh).material as THREE.Material).transparent = true;
+        //((obj as THREE.Mesh).material as THREE.Material).side = THREE.DoubleSide;
+        //((obj as THREE.Mesh).material as THREE.Material).alphaTest = 0.5;
+      })
+      .catch(err => {
+        console.error('error loading models', err);
+      });
+  };
+  componentDidMount() {
+    window.THREE = THREE;
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+
+    const scene = new THREE.Scene();
+    this.scene = scene;
+    this.setupScene();
+
     //scene.add(cube.entity);
     //scene.add(line.entity);
 
-    renderer.setClearColor(skyColour);
-    renderer.setSize(width, height);
     //camera.position.set(0, 8 * this.scl, 10 * this.scl);
     //camera.lookAt(0, 4 * this.scl, 0);
     const onMove = e => {
@@ -382,58 +441,6 @@ class Scene extends Component {
     document.addEventListener('touchstart', onMove);
     document.addEventListener('touchmove', onMove);
     document.addEventListener('touchend', onMove);
-    this.camera = camera;
-    this.renderer = renderer;
-    //this.cube = cube.entity;
-    this.loadModels([{ type: 'gltf', model: treeGLTF }])
-      .then(objOriginal => {
-        objOriginal = objOriginal[0];
-        const objs = [objOriginal];
-        for (let i = 0; i < 200; i++) {
-          const newObj = objOriginal.clone();
-          const rndInCircle = this.randomPositionInCircle(500);
-          newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
-          newObj.rotation.y = Math.random() * Math.PI * 2;
-          objs.push(newObj);
-        }
-        objs.forEach(obj => {
-          obj.scale.set(0.015 * this.scl, 0.015 * this.scl, 0.015 * this.scl);
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-
-          obj.traverse(o => {
-            if (o.isMesh) {
-              o.castShadow = true;
-              o.receiveShadow = true;
-
-              if (o.name.includes('leaf')) {
-                //this allows transparent textures such a tree leaves
-                o.material.transparent = true;
-                //this removes depth issues where leaves behind were blacked
-                //out behind leaves in front
-                o.material.alphaTest = 0.5;
-                var customDepthMaterial = new THREE.MeshDepthMaterial({
-                  depthPacking: THREE.RGBADepthPacking,
-
-                  map: o.material.map, // or, alphaMap: myAlphaMap
-
-                  alphaTest: 0.5,
-                });
-
-                o.customDepthMaterial = customDepthMaterial;
-              }
-            }
-          });
-          this.scene.add(obj);
-        });
-        this.trees = objs;
-        //       ((obj as THREE.Mesh).material as THREE.Material).transparent = true;
-        //((obj as THREE.Mesh).material as THREE.Material).side = THREE.DoubleSide;
-        //((obj as THREE.Mesh).material as THREE.Material).alphaTest = 0.5;
-      })
-      .catch(err => {
-        console.error('error loading models', err);
-      });
 
     this.mount.appendChild(this.renderer.domElement);
     this.start();
@@ -523,12 +530,10 @@ class Scene extends Component {
     let sb = 0.1;
     let sl = 0.1;
     //camOrbitAngle = camOrbitAngle + Math.PI;
-    sb = this.angularDistance(camOrbitAngle, Math.PI / 4) / Math.PI;
-    sl = this.angularDistance(camOrbitAngle, (Math.PI / 4) * 3) / Math.PI;
-    st = this.angularDistance(camOrbitAngle, Math.PI / 4 + Math.PI) / Math.PI;
-    sr =
-      this.angularDistance(camOrbitAngle, (Math.PI / 4) * 3 + Math.PI) /
-      Math.PI;
+    sb = angularDistance(camOrbitAngle, Math.PI / 4) / Math.PI;
+    sl = angularDistance(camOrbitAngle, (Math.PI / 4) * 3) / Math.PI;
+    st = angularDistance(camOrbitAngle, Math.PI / 4 + Math.PI) / Math.PI;
+    sr = angularDistance(camOrbitAngle, (Math.PI / 4) * 3 + Math.PI) / Math.PI;
     // if (camOrbitAngle < Math.PI / 2) {
     //   console.log('btm');
     //   //
