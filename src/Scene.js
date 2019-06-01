@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import Resize from './Resize';
 import treeGLTF from './models/tree-1/scene.gltf';
-import treeFBX from './models/tree-1-fbx/trees1.fbx';
+//import treeFBX from './models/tree-1-fbx/trees1.fbx';
 const getTouchesXY = ts => {
   const pos = {
     x: 0,
@@ -67,97 +67,100 @@ const loadModels = models => {
     })
   );
 };
+//get the distance between 2 angles
+//alpha and beta must be normalized between 0 and Math.PI*2
+const angularDistance = (alpha, beta) => {
+  const pi = Math.PI;
+  const tau = pi * 2;
+  // This is either the distance or 2pi - distance
+  const phi = Math.abs(beta - alpha) % tau;
+  const distance = phi > pi ? tau - phi : phi;
+  return distance;
+};
 class Scene extends Component {
   loadModels = loadModels;
   scl = 3;
-  //alpha and beta must be normalized between 0 and Math.PI*2
-  angularDistance = (alpha, beta) => {
-    const pi = Math.PI;
-    const tau = pi * 2;
-    const phi = Math.abs(beta - alpha) % tau; // This is either the distance or 360 - distance
-    const distance = phi > pi ? tau - phi : phi;
-    return distance;
-  };
+  angularDistance = angularDistance;
   //camera x,y,z offset
   o = {
     x: 0,
     y: 1,
     z: 0,
   };
-  createSky = scene => {
+  //xyz coords of the sun
+  sunX = 0;
+  sunY = 0;
+  sunZ = 0;
+  createSky = (
+    settings = {
+      turbidity: 10,
+      rayleigh: 2,
+      mieCoefficient: 0.005,
+      mieDirectionalG: 0.8,
+      luminance: 1,
+      inclination: 0.2,
+      azimuth: 0.45,
+      sun: true,
+    }
+  ) => {
+    const scene = this.scene;
     return new Promise((resolve, reject) => {
       //  var controls, renderer;
       import('three/examples/js/objects/Sky')
         .then(() => {
-          var sky, sunSphere;
+          let sky, sunSphere;
 
           // Add Sky
           sky = new window.THREE.Sky();
           sky.scale.setScalar(450000);
-          this.sky = sky;
           scene.add(sky);
 
-          // Add Sun Helper
+          // Add Sun
           sunSphere = new THREE.Mesh(
             new THREE.SphereBufferGeometry(20000, 16, 8),
             new THREE.MeshBasicMaterial({
               color: 0xffffff,
             })
           );
-          sunSphere.position.y = -70000;
-          sunSphere.visible = false;
+
           scene.add(sunSphere);
 
-          /// GUI
+          let uniforms = sky.material.uniforms;
+          uniforms['turbidity'].value = settings.turbidity;
+          uniforms['rayleigh'].value = settings.rayleigh;
+          uniforms['luminance'].value = settings.luminance;
+          uniforms['mieCoefficient'].value = settings.mieCoefficient;
+          uniforms['mieDirectionalG'].value = settings.mieDirectionalG;
 
-          var effectController = {
-            turbidity: 10,
-            rayleigh: 2,
-            mieCoefficient: 0.005,
-            mieDirectionalG: 0.8,
-            luminance: 1,
-            inclination: 0.2, // elevation / inclination
-            azimuth: 0.45, // Facing front,
-            sun: true,
-          };
-
-          var distance = 70000;
-
-          var uniforms = sky.material.uniforms;
-          uniforms['turbidity'].value = effectController.turbidity;
-          uniforms['rayleigh'].value = effectController.rayleigh;
-          uniforms['luminance'].value = effectController.luminance;
-          uniforms['mieCoefficient'].value = effectController.mieCoefficient;
-          uniforms['mieDirectionalG'].value = effectController.mieDirectionalG;
-
-          var theta = Math.PI * (effectController.inclination - 0.5);
-          var phi = 2 * Math.PI * (effectController.azimuth - 0.5);
-
+          let theta = Math.PI * (settings.inclination - 0.5);
+          let phi = 2 * Math.PI * (settings.azimuth - 0.5);
+          let distance = 7000;
           sunSphere.position.x = distance * Math.cos(phi);
           sunSphere.position.y = distance * Math.sin(phi) * Math.sin(theta);
           sunSphere.position.z = distance * Math.sin(phi) * Math.cos(theta);
 
-          sunSphere.visible = effectController.sun;
+          sunSphere.visible = settings.sun;
 
           uniforms['sunPosition'].value.copy(sunSphere.position);
 
-          /*        var gui = new dat.GUI();
+          /*
+            var gui = new dat.GUI();
 
-          gui.add( effectController, "turbidity", 1.0, 20.0, 0.1 ).onChange( guiChanged );
-          gui.add( effectController, "rayleigh", 0.0, 4, 0.001 ).onChange( guiChanged );
-                  gui.add( effectController, "mieCoefficient", 0.0, 0.1, 0.001 ).onChange(
-  guiChanged );
-          gui.add( effectController, "mieDirectionalG", 0.0, 1, 0.001 ).onChange( guiChanged
-  );
-          gui.add( effectController, "luminance", 0.0, 2 ).onChange( guiChanged );
-          gui.add( effectController, "inclination", 0, 1, 0.0001 ).onChange( guiChanged );
-                  gui.add( effectController, "azimuth", 0, 1, 0.0001 ).onChange( guiChanged
-  );
-          gui.add( effectController, "sun" ).onChange( guiChanged );
+            gui.add( settings, "turbidity", 1.0, 20.0, 0.1 ).onChange( guiChanged );
+            gui.add( settings, "rayleigh", 0.0, 4, 0.001 ).onChange( guiChanged );
+                    gui.add( effectController, "mieCoefficient", 0.0, 0.1, 0.001 ).onChange(
+            guiChanged );
+                    gui.add( effectController, "mieDirectionalG", 0.0, 1, 0.001 ).onChange( guiChanged
+            );
+                    gui.add( effectController, "luminance", 0.0, 2 ).onChange( guiChanged );
+                    gui.add( effectController, "inclination", 0, 1, 0.0001 ).onChange( guiChanged );
+                            gui.add( effectController, "azimuth", 0, 1, 0.0001 ).onChange( guiChanged
+            );
+            gui.add( effectController, "sun" ).onChange( guiChanged );
 
-          guiChanged();
-          
-*/
+            guiChanged();
+                      
+          */
           resolve({
             ...sunSphere.position,
             distance,
@@ -168,9 +171,6 @@ class Scene extends Component {
         });
     });
   };
-  sunX = 1000;
-  sunY = 100;
-  sunZ = 1000;
   randomPositionInCircle = radius => {
     const angle = Math.random() * Math.PI * 2;
     const dist = Math.sqrt(Math.random() * radius * radius);
@@ -201,6 +201,7 @@ class Scene extends Component {
     const brightness = 1;
     const skyColour = 'rgba(35,139,255,1)'; //'#78a8bb';
     const scene = new THREE.Scene();
+    this.scene = scene;
     /*const fog = {
       color: 'rgba(255,255,230,0.1)',
       density: 0.001,
@@ -215,7 +216,7 @@ class Scene extends Component {
     renderer.gammaFactor = 2.2;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.createSky(scene).then(({ x, y, z, distance }) => {
+    this.createSky().then(({ x, y, z, distance }) => {
       const skyLightCoords = new THREE.Vector3(x, y, z);
       //skyLightCoords.setFromSphericalCoords(radius, phi, theta);
       this.sunX = skyLightCoords.x;
@@ -381,7 +382,6 @@ class Scene extends Component {
     document.addEventListener('touchstart', onMove);
     document.addEventListener('touchmove', onMove);
     document.addEventListener('touchend', onMove);
-    this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
     //this.cube = cube.entity;
