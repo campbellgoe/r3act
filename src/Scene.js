@@ -14,7 +14,7 @@ class Scene extends Component {
             // Note : window. is required here to make it works.
             const loader = new window.THREE.FBXLoader();
             // Have fun here
-            console.log('loader:', loader);
+            //console.log('loader:', loader);
             loader.load(
               treeFBX,
               function(obj) {
@@ -64,7 +64,7 @@ class Scene extends Component {
   mouseIsDown = false;
   o = {
     x: 0,
-    y: 0.1,
+    y: 1,
     z: 0,
   };
   createSky = scene => {
@@ -154,6 +154,19 @@ class Scene extends Component {
   sunX = 1000;
   sunY = 100;
   sunZ = 1000;
+  randomPositionInCircle = radius => {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.sqrt(Math.random() * radius * radius);
+    return {
+      x: Math.cos(angle) * dist,
+      y: Math.sin(angle) * dist,
+    };
+  };
+  distanceSquared = ({ x: ax, y: ay }, { x: bx, y: by }) => {
+    const a = ax - bx;
+    const b = ay - by;
+    return (a ** 2 + b ** 2) ** 0.5;
+  };
   componentDidMount() {
     window.THREE = THREE;
 
@@ -255,7 +268,6 @@ class Scene extends Component {
     };
     plane.geometry.rotateX(-(Math.PI / 2));
     plane.entity = new THREE.Mesh(plane.geometry, plane.material);
-    console.log('plane', plane.entity);
     plane.entity.receiveShadow = true;
     this.plane = plane;
     scene.add(plane.entity);
@@ -267,8 +279,8 @@ class Scene extends Component {
     //camera.position.set(0, 8 * this.scl, 10 * this.scl);
     //camera.lookAt(0, 4 * this.scl, 0);
     const onMove = e => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      const w = this.width;
+      const h = this.height;
       let mx, my;
       if (e.type === 'mousedown') {
         this.mouseIsDown = true;
@@ -289,95 +301,22 @@ class Scene extends Component {
           this.mouseIsDown = true;
         }
       }
-      const rx = mx / w;
-      this.rx = rx;
-      const ax = rx * 80 * this.scl - 40 * this.scl;
-      const ry = my / h;
-      this.ry = ry;
-      const ay = ry * 80 * this.scl - 20 * this.scl;
-      const o = this.o;
-      const orbitCamera = () => {
-        let zoom = Math.max(0.05 * this.scl, ry);
-        let zoomAbs = 40 * this.scl * zoom;
-        const camOrbitAngle = rx * Math.PI * 2;
-        //camera.position.x = ax;
-        camera.position.x = Math.cos(camOrbitAngle) * zoomAbs + o.x;
-
-        camera.position.z = Math.sin(camOrbitAngle) * zoomAbs + o.z;
-        //camera.position.z = ay;
-        camera.position.y = Math.max(ay, 3 * this.scl) + o.y;
-
-        zoom = Math.max(0.075 * this.scl, zoom);
-        zoomAbs = 40 * this.scl * zoom;
-
-        //const sl = (w - mx) ** 0.5;
-        //const sr = mx ** 0.5;
-        //use camOrbitAngle to determine shadow camera left, right, top, bottom etc.
-        /*
-        if angle is between 0 and Math.PI/2
-      */
-        const sm = Math.min(Math.max(zoom + 0.5, 0.7), 1.2);
-        let st = 0.1;
-        let sr = 0.1;
-        let sb = 0.1;
-        let sl = 0.1;
-        console.log('aangle:', camOrbitAngle);
-        //camOrbitAngle = camOrbitAngle + Math.PI;
-        sb = this.angularDistance(camOrbitAngle, Math.PI / 4) / Math.PI;
-        sl = this.angularDistance(camOrbitAngle, (Math.PI / 4) * 3) / Math.PI;
-        st =
-          this.angularDistance(camOrbitAngle, Math.PI / 4 + Math.PI) / Math.PI;
-        sr =
-          this.angularDistance(camOrbitAngle, (Math.PI / 4) * 3 + Math.PI) /
-          Math.PI;
-        console.log('sb', sb, 'sl', sl);
-        if (camOrbitAngle < Math.PI / 2) {
-          console.log('btm');
-          //
-        } else if (camOrbitAngle <= Math.PI) {
-          console.log('lft');
-          //((Math.PI/4)*3)
-        } else if (camOrbitAngle <= Math.PI + Math.PI / 2) {
-          console.log('top');
-          //(Math.PI/4)+Math.PI
-        } else {
-          console.log('rgt');
-          //((Math.PI/4)*3)+Math.PI
-        }
-        const sarr = { st, sr, sb, sl };
-        st = sarr.st * 2 + (sarr.sl + sarr.sr);
-        sr = (sarr.sr * 2 + (sarr.st + sarr.sb)) * 1.5;
-        sb = sarr.sb * 2 + (sarr.sr + sarr.sl);
-        sl = (sarr.sl * 2 + (sarr.sb + sarr.st)) * 1.5;
-
-        st = Math.max(0.4, st * 1.3);
-        sr = Math.max(0.4, sr * 1.3);
-        sb = Math.max(0.4, sb * 1.3);
-        sl = Math.max(0.4, sl * 1.3);
-        // st = camOrbitAngle;
-        // sr = st;
-        // sb = st;
-        // sl = st;
-        const sMax = 50 * this.scl;
-        const sMin = 3 * this.scl;
-        const dLight = this.dLight;
-        const dLightHelper = this.dLightHelper;
-        if (dLight) {
-          dLight.shadow.camera.left =
-            -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sl)) * this.scl;
-          dLight.shadow.camera.right =
-            Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sr)) * this.scl;
-
-          dLight.shadow.camera.top =
-            Math.max(sMin, Math.min(sMax, zoomAbs ** sm * st)) * this.scl;
-          dLight.shadow.camera.bottom =
-            -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sb)) * this.scl;
-          dLight.shadow.camera.updateProjectionMatrix();
-          dLightHelper.update();
-        }
-        camera.lookAt(o.x, o.y * this.scl, o.z);
-      };
-
+      this.mx = mx;
+      this.my = my;
+      const { drx, dry, rx, ry } = this.calculatePositionsFromMouse(
+        this.mx,
+        this.my
+      );
+      if (e.type === 'mousedown' || e.type === 'touchstart') {
+        this.drx = rx % 1;
+        this.dry = ry % 1;
+      }
+      if (e.type === 'mouseup' || e.type === 'touchend') {
+        //this.drx
+        this.drx = rx % 1;
+        this.dry = Math.max(0.05, ry);
+        console.log('dry:', ry);
+      }
       // dLight.position.set(
       //   400 * this.scl,
       //   1000 * this.scl,
@@ -385,10 +324,10 @@ class Scene extends Component {
       // );
       // this.dLight.position.set(-x * 10, y * 10, -z * 10);
       if (this.mouseIsDown) {
+        this.orbitCamera();
         //translateCamera();
         //translateShadow();
       } else {
-        orbitCamera();
         //translateShadow();
       }
     };
@@ -403,18 +342,14 @@ class Scene extends Component {
     this.loadModels()
       .then(objOriginal => {
         const objs = [objOriginal];
-        for (let i = 0; i < 600; i++) {
+        for (let i = 0; i < 200; i++) {
           const newObj = objOriginal.clone();
-          newObj.position.set(
-            Math.random() * 1200 - 600,
-            0,
-            Math.random() * 1200 - 600
-          );
+          const rndInCircle = this.randomPositionInCircle(500);
+          newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
           newObj.rotation.y = Math.random() * Math.PI * 2;
           objs.push(newObj);
         }
         objs.forEach(obj => {
-          console.log('model:', obj);
           obj.scale.set(0.015 * this.scl, 0.015 * this.scl, 0.015 * this.scl);
           obj.castShadow = true;
           obj.receiveShadow = true;
@@ -430,7 +365,6 @@ class Scene extends Component {
                 //this removes depth issues where leaves behind were blacked
                 //out behind leaves in front
                 o.material.alphaTest = 0.5;
-                console.log('material', o.material.map);
                 var customDepthMaterial = new THREE.MeshDepthMaterial({
                   depthPacking: THREE.RGBADepthPacking,
 
@@ -472,7 +406,128 @@ class Scene extends Component {
   stop = () => {
     cancelAnimationFrame(this.frameId);
   };
+  drx = 0;
+  dry = 0;
+  calculatePositionsFromMouse = (mx, my) => {
+    const drx = this.drx;
+    const dry = this.dry;
+    const w = this.width;
+    const h = this.height;
+    const rx = (mx / w - drx) % 1;
+    const ax = rx * 80 * this.scl - 40 * this.scl;
+    const ry = Math.min(my / h - dry, 0.99) % 1;
+    const ay = ry * 80 * this.scl - 20 * this.scl;
+    let zoom = Math.max(0.05 * this.scl, ry);
+    let zoomAbs = 40 * this.scl * zoom;
+    return {
+      mx,
+      my,
+      rx,
+      ry,
+      ax,
+      ay,
+      zoom,
+      zoomAbs,
+      drx,
+      dry,
+      w,
+      h,
+    };
+  };
+  orbitCamera = () => {
+    let {
+      mx,
+      my,
+      rx,
+      ry,
+      ax,
+      ay,
+      drx,
+      dry,
+      w,
+      h,
+      zoom,
+      zoomAbs,
+    } = this.calculatePositionsFromMouse(this.mx, this.my);
+    const camera = this.camera;
+    const o = this.o;
 
+    const camOrbitAngle = rx * Math.PI * 2;
+    //camera.position.x = ax;
+    camera.position.x = Math.cos(camOrbitAngle) * zoomAbs + o.x;
+
+    camera.position.z = Math.sin(camOrbitAngle) * zoomAbs + o.z;
+    //camera.position.z = ay;
+    camera.position.y = Math.max(ry, 0.05) * 80 + o.y;
+
+    //zoom = Math.max(0.075 * this.scl, zoom);
+    //zoomAbs = 40 * this.scl * zoom;
+    zoom = camera.position.y / 100;
+    zoomAbs = camera.position.y;
+    //const sl = (w - mx) ** 0.5;
+    //const sr = mx ** 0.5;
+    //use camOrbitAngle to determine shadow camera left, right, top, bottom etc.
+    /*
+    if angle is between 0 and Math.PI/2
+  */
+    const sm = Math.min(Math.max(zoom, 0.7), 1.2);
+    let st = 0.1;
+    let sr = 0.1;
+    let sb = 0.1;
+    let sl = 0.1;
+    //camOrbitAngle = camOrbitAngle + Math.PI;
+    sb = this.angularDistance(camOrbitAngle, Math.PI / 4) / Math.PI;
+    sl = this.angularDistance(camOrbitAngle, (Math.PI / 4) * 3) / Math.PI;
+    st = this.angularDistance(camOrbitAngle, Math.PI / 4 + Math.PI) / Math.PI;
+    sr =
+      this.angularDistance(camOrbitAngle, (Math.PI / 4) * 3 + Math.PI) /
+      Math.PI;
+    // if (camOrbitAngle < Math.PI / 2) {
+    //   console.log('btm');
+    //   //
+    // } else if (camOrbitAngle <= Math.PI) {
+    //   console.log('lft');
+    //   //((Math.PI/4)*3)
+    // } else if (camOrbitAngle <= Math.PI + Math.PI / 2) {
+    //   console.log('top');
+    //   //(Math.PI/4)+Math.PI
+    // } else {
+    //   console.log('rgt');
+    //   //((Math.PI/4)*3)+Math.PI
+    // }
+    const sarr = { st, sr, sb, sl };
+    st = (sarr.st * 2 + (sarr.sl + sarr.sr)) * 1.5;
+    sr = (sarr.sr * 2 + (sarr.st + sarr.sb)) * 1.5;
+    sb = (sarr.sb * 2 + (sarr.sr + sarr.sl)) * 1.5;
+    sl = (sarr.sl * 2 + (sarr.sb + sarr.st)) * 1.5;
+
+    st = Math.max(0.4, st * 1.3);
+    sr = Math.max(0.4, sr * 1.3);
+    sb = Math.max(0.4, sb * 1.3);
+    sl = Math.max(0.4, sl * 1.3);
+    // st = camOrbitAngle;
+    // sr = st;
+    // sb = st;
+    // sl = st;
+    const sMax = 50 * this.scl;
+    const sMin = 3 * this.scl;
+    const dLight = this.dLight;
+    const dLightHelper = this.dLightHelper;
+    if (dLight) {
+      dLight.shadow.camera.left =
+        -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sl)) * this.scl;
+      dLight.shadow.camera.right =
+        Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sr)) * this.scl;
+
+      dLight.shadow.camera.top =
+        Math.max(sMin, Math.min(sMax, zoomAbs ** sm * st)) * this.scl;
+      dLight.shadow.camera.bottom =
+        -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sb)) * this.scl;
+      dLight.shadow.camera.updateProjectionMatrix();
+      dLightHelper.update();
+    }
+    camera.lookAt(o.x, o.y * this.scl, o.z);
+  };
   animate = ms => {
     ms = Math.round(ms / 10);
     const enableCamShowcase = false;
@@ -495,11 +550,11 @@ class Scene extends Component {
     }
 
     if (this.mouseIsDown) {
-      const translateCamera = () => {
-        const xd = this.rx - 0.5;
-        o.x += xd;
-        cam.position.x += xd;
-      };
+      // const translateCamera = () => {
+      //   const xd = this.rx - 0.5;
+      //   o.x += xd;
+      //   cam.position.x += xd;
+      // };
       const translateShadow = () => {
         const dLight = this.dLight;
         if (!dLight) return;
@@ -538,7 +593,7 @@ class Scene extends Component {
         }
         dLight.shadow.camera.updateProjectionMatrix();
       };
-      translateCamera();
+      //translateCamera();
       translateShadow();
     }
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
@@ -557,7 +612,9 @@ class Scene extends Component {
     return (
       <Resize>
         {({ width, height }) => {
-          console.log(width);
+          this.width = window.innerWidth;
+          this.height = window.innerHeight;
+          //console.log(width);
           if (width && height) {
             console.log(width, height);
             this.renderer.setSize(width, height);
