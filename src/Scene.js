@@ -18,54 +18,57 @@ const getTouchesXY = ts => {
   }
   return pos;
 };
-class Scene extends Component {
-  loadModels = () => {
-    return new Promise((resolve, reject) => {
-      const type = 'gltf';
-      switch (type) {
-        case 'fbx': {
-          import('three/examples/js/loaders/FBXLoader').then(() => {
-            // Note : window. is required here to make it works.
-            const loader = new window.THREE.FBXLoader();
-            // Have fun here
-            //console.log('loader:', loader);
+const loadModels = models => {
+  if (!Array.isArray(models)) throw new Error('models must be an array');
+  return Promise.all(
+    models.map(({ type, model }) => {
+      return new Promise((resolve, reject) => {
+        switch (type) {
+          case 'fbx': {
+            import('three/examples/js/loaders/FBXLoader').then(() => {
+              // Note : window. is required here to make it works.
+              const loader = new window.THREE.FBXLoader();
+              // Have fun here
+              //console.log('loader:', loader);
+              loader.load(
+                model,
+                function(obj) {
+                  resolve(obj);
+                  //scene.add( gltf.scene );
+                },
+                undefined,
+                function(error) {
+                  reject(error);
+                }
+              );
+            });
+            break;
+          }
+          case 'gltf': {
+            const loader = new GLTFLoader();
+
             loader.load(
-              treeFBX,
-              function(obj) {
-                resolve(obj);
-                //scene.add( gltf.scene );
+              model,
+              function(gltf) {
+                resolve(gltf.scene);
               },
               undefined,
               function(error) {
                 reject(error);
               }
             );
-          });
-          break;
+            break;
+          }
+          default: {
+            throw new Error('Unknown model type ' + type);
+          }
         }
-        case 'gltf': {
-          ///*
-          const loader = new GLTFLoader();
-
-          loader.load(
-            treeGLTF,
-            function(gltf) {
-              resolve(gltf.scene);
-            },
-            undefined,
-            function(error) {
-              reject(error);
-            }
-          );
-          //*/
-          break;
-        }
-        default: {
-          break;
-        }
-      }
-    });
-  };
+      });
+    })
+  );
+};
+class Scene extends Component {
+  loadModels = loadModels;
   scl = 3;
   //alpha and beta must be normalized between 0 and Math.PI*2
   angularDistance = (alpha, beta) => {
@@ -382,8 +385,9 @@ class Scene extends Component {
     this.camera = camera;
     this.renderer = renderer;
     //this.cube = cube.entity;
-    this.loadModels()
+    this.loadModels([{ type: 'gltf', model: treeGLTF }])
       .then(objOriginal => {
+        objOriginal = objOriginal[0];
         const objs = [objOriginal];
         for (let i = 0; i < 200; i++) {
           const newObj = objOriginal.clone();
