@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import Resize from './Resize';
 import treeGLTF from './models/tree-1/scene.gltf';
 import treeFBX from './models/tree-1-fbx/trees1.fbx';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 class Scene extends Component {
   loadModels = () => {
     return new Promise((resolve, reject) => {
@@ -87,7 +88,7 @@ class Scene extends Component {
               color: 0xffffff,
             })
           );
-          sunSphere.position.y = -70000;
+          sunSphere.position.y = -7000;
           sunSphere.visible = false;
           scene.add(sunSphere);
 
@@ -100,11 +101,11 @@ class Scene extends Component {
             mieDirectionalG: 0.8,
             luminance: 1,
             inclination: 0.2, // elevation / inclination
-            azimuth: 0.45, // Facing front,
+            azimuth: 0.475, // Facing front,
             sun: true,
           };
 
-          var distance = 70000;
+          var distance = 7000;
 
           var uniforms = sky.material.uniforms;
           uniforms['turbidity'].value = effectController.turbidity;
@@ -154,6 +155,19 @@ class Scene extends Component {
   sunX = 1000;
   sunY = 100;
   sunZ = 1000;
+  randomPositionInCircle = radius => {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.sqrt(Math.random() * radius * radius);
+    return {
+      x: Math.cos(angle) * dist,
+      y: Math.sin(angle) * dist,
+    };
+  };
+  distanceSquared = ({ x: ax, y: ay }, { x: bx, y: by }) => {
+    const a = ax - bx;
+    const b = ay - by;
+    return (a ** 2 + b ** 2) ** 0.5;
+  };
   componentDidMount() {
     window.THREE = THREE;
 
@@ -172,6 +186,11 @@ class Scene extends Component {
     //scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const cameraControls = new OrbitControls(camera, renderer.domElement);
+
+    camera.position.set(0, 20, 100);
+    // cameraControls.update();
+    this.cameraControls = cameraControls;
     renderer.gammaOutput = true;
     renderer.gammaFactor = 2.2;
     renderer.shadowMap.enabled = true;
@@ -191,6 +210,7 @@ class Scene extends Component {
       dLight.shadow.camera.left = -15 * this.scl;
       dLight.shadow.camera.top = 20 * this.scl;
       dLight.shadow.camera.bottom = -10 * this.scl;*/
+      dLight.shadow.camera.near = this.sunD - 200;
       dLight.shadow.camera.far = this.sunD * 2 * this.scl;
       const maxTS = renderer.capabilities.maxTextureSize;
       if (maxTS >= 4096) {
@@ -372,8 +392,8 @@ class Scene extends Component {
             Math.max(sMin, Math.min(sMax, zoomAbs ** sm * st)) * this.scl;
           dLight.shadow.camera.bottom =
             -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sb)) * this.scl;
-          dLight.shadow.camera.updateProjectionMatrix();
-          dLightHelper.update();
+          //dLight.shadow.camera.updateProjectionMatrix();
+          //dLightHelper.update();
         }
         camera.lookAt(o.x, o.y * this.scl, o.z);
       };
@@ -388,29 +408,43 @@ class Scene extends Component {
         //translateCamera();
         //translateShadow();
       } else {
-        orbitCamera();
+        //orbitCamera();
         //translateShadow();
       }
     };
-    document.addEventListener('mousedown', onMove);
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onMove);
-    document.addEventListener('touchmove', onMove);
+    // document.addEventListener('mousedown', onMove);
+    // document.addEventListener('mousemove', onMove);
+    // document.addEventListener('mouseup', onMove);
+    // document.addEventListener('touchmove', onMove);
+    const o = this.o;
+    camera.lookAt(o.x, o.y, o.z);
+    cameraControls.update();
     this.scene = scene;
     this.camera = camera;
     this.renderer = renderer;
+
+    const onCameraChange = e => {
+      console.log(e);
+      if (!this.allowRender) this.allowRender = true;
+    };
+    cameraControls.addEventListener('change', onCameraChange);
+    //console.log('quat', camera.quaternion);
+    // camera.quaternion.onChangeCallback = () => {
+    //   console.log('camera change..');
+    //   console.log(camera);
+    //   if (!this.allowRender) this.allowRender = true;
+    //   if (!this.cameraQuaternionChanged) this.cameraQuaternionChanged = true;
+    // };
     //this.cube = cube.entity;
     this.loadModels()
       .then(objOriginal => {
         const objs = [objOriginal];
-        for (let i = 0; i < 600; i++) {
+        for (let i = 0; i < 300; i++) {
           const newObj = objOriginal.clone();
-          newObj.position.set(
-            Math.random() * 1200 - 600,
-            0,
-            Math.random() * 1200 - 600
-          );
+          const rndInCircle = this.randomPositionInCircle(400);
+          newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
           newObj.rotation.y = Math.random() * Math.PI * 2;
+
           objs.push(newObj);
         }
         objs.forEach(obj => {
@@ -418,7 +452,6 @@ class Scene extends Component {
           obj.scale.set(0.015 * this.scl, 0.015 * this.scl, 0.015 * this.scl);
           obj.castShadow = true;
           obj.receiveShadow = true;
-
           obj.traverse(o => {
             if (o.isMesh) {
               o.castShadow = true;
@@ -472,97 +505,99 @@ class Scene extends Component {
   stop = () => {
     cancelAnimationFrame(this.frameId);
   };
-
-  animate = ms => {
-    ms = Math.round(ms / 10);
-    const enableCamShowcase = false;
+  groundPoint = null;
+  translateShadow = () => {
+    let shadowUpdated = false;
     const cam = this.camera;
-    const o = this.o;
-    //const cube = this.cube;
-    if (enableCamShowcase) {
-      // cube.rotation.x += 0.01;
-      // cube.rotation.y += 0.01;
-      let x = Math.sin(ms / 160) * 12 * this.scl;
-      let y = Math.cos(ms / 320) * 9 * this.scl + 11 * this.scl;
-      let z = Math.cos(ms / 210) * 12 * this.scl;
+    const dLight = this.dLight;
+    if (!dLight) return;
+    var raycaster = new THREE.Raycaster();
+    var center = new THREE.Vector2();
 
-      cam.position.set(o.x, o.y, o.z);
-      y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
-      //var point = new THREE.Vector3(0, y, 0);
+    center.x = 0; //rx * 2 - 1;
+    center.y = 0; //ry * 2 - 1;
 
-      //cam.lookAt(point);
-      this.helper.update();
+    raycaster.setFromCamera(center, cam);
+
+    // calculate objects intersecting the picking ray
+    var intersects = raycaster.intersectObject(this.plane.entity);
+    let groundPoint;
+    let intersection;
+    if (intersects.length > 1) {
+      console.warn('how can intersects a flat plane be > 1?', intersects);
+      //throw new Error('how can intersects be > 1?');
+    }
+    if (Array.isArray(intersects) && intersects.length > 0) {
+      intersection = intersects[0];
+    }
+    if (intersection) {
+      groundPoint = intersection.point;
     }
 
-    if (this.mouseIsDown) {
-      const translateCamera = () => {
-        const xd = this.rx - 0.5;
-        o.x += xd;
-        cam.position.x += xd;
-      };
-      const translateShadow = () => {
-        const dLight = this.dLight;
-        if (!dLight) return;
-        var raycaster = new THREE.Raycaster();
-        var center = new THREE.Vector2();
-
-        center.x = 0; //rx * 2 - 1;
-        center.y = 0; //ry * 2 - 1;
-
-        raycaster.setFromCamera(center, cam);
-
-        // calculate objects intersecting the picking ray
-        var intersects = raycaster.intersectObject(this.plane.entity);
-        let groundPoint;
-        let intersection;
-        if (intersects.length > 1) {
-          console.warn('how can intersects a flat plane be > 1?', intersects);
-          //throw new Error('how can intersects be > 1?');
-        }
-        if (Array.isArray(intersects) && intersects.length > 0) {
-          intersection = intersects[0];
-        }
-        if (intersection) {
-          groundPoint = intersection.point;
-        }
-
-        if (groundPoint) {
-          //cam view intersects with ground plane at groundPoint
-          //add groundPoint x,y,z to the directional light position and target point.
-          dLight.target.position.copy(groundPoint);
-          dLight.position.set(
-            this.sunX * this.scl + groundPoint.x,
-            this.sunY * this.scl + groundPoint.y,
-            this.sunZ * this.scl + groundPoint.z
-          );
-        }
-        dLight.shadow.camera.updateProjectionMatrix();
-      };
-      translateCamera();
-      translateShadow();
+    if (groundPoint) {
+      if (!this.groundPoint || groundPoint.distanceTo(this.groundPoint) > 10) {
+        //cam view intersects with ground plane at groundPoint
+        //add groundPoint x,y,z to the directional light position and target point.
+        dLight.target.position.copy(groundPoint);
+        dLight.position.set(
+          this.sunX * this.scl + groundPoint.x,
+          this.sunY * this.scl + groundPoint.y,
+          this.sunZ * this.scl + groundPoint.z
+        );
+        this.dLightHelper.update();
+        this.groundPoint = groundPoint;
+        shadowUpdated = true;
+      }
+      if (!this.groundPoint) this.groundPoint = groundPoint;
     }
-    //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
-    //this.dLight.position.set(-x * 10, y * 10, -z * 10);
-    //this.dLight.shadow.camera.updateProjectionMatrix();
+    return shadowUpdated;
+  };
+  rotateShadow = () => {
+    const dLight = this.dLight;
+    const dLightHelper = this.dLightHelper;
+    if (dLight) {
+      dLight.shadow.camera.left = -10;
+      dLight.shadow.camera.right = 10;
 
-    this.renderScene();
+      dLight.shadow.camera.top = 10;
+      dLight.shadow.camera.bottom = -10;
+      dLight.shadow.camera.updateProjectionMatrix();
+      // dLightHelper.update();
+    }
+  };
+  animate = ms => {
+    if (this.allowRender) {
+      ms = Math.round(ms / 10);
+      if (this.translateShadow()) {
+        this.rotateShadow();
+      }
+      this.renderScene();
+      this.allowRender = false;
+    }
     this.frameId = window.requestAnimationFrame(this.animate);
   };
 
   renderScene = () => {
     this.renderer.render(this.scene, this.camera);
   };
-
+  lastW = 0;
+  lastH = 0;
   render() {
     return (
       <Resize>
         {({ width, height }) => {
           console.log(width);
-          if (width && height) {
+          if (
+            width &&
+            height &&
+            (width !== this.lastW || height !== this.lastH)
+          ) {
             console.log(width, height);
             this.renderer.setSize(width, height);
             this.camera.aspect = width / height;
             this.camera.updateProjectionMatrix();
+            this.lastW = width;
+            this.lastH = height;
           }
           return (
             <div
