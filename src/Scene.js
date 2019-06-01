@@ -1,97 +1,12 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import Resize from './Resize';
 import treeGLTF from './models/tree-1/scene.gltf';
-// region [ rgba(99,145,132,0.1) ]
+import { randomPositionInCircle, angularDistance } from './utils/geom.js';
+import { getTouchesXY, mouseDownTypes } from './utils/input.js';
+import loadModels from './utils/loadModels.js';
 //import treeFBX from './models/tree-1-fbx/trees1.fbx';
-const randomPositionInCircle = radius => {
-  const angle = Math.random() * Math.PI * 2;
-  const dist = Math.sqrt(Math.random() * radius * radius);
-  return {
-    x: Math.cos(angle) * dist,
-    y: Math.sin(angle) * dist,
-  };
-};
-// const distanceSquared = ({ x: ax, y: ay }, { x: bx, y: by }) => {
-//   const a = ax - bx;
-//   const b = ay - by;
-//   return (a ** 2 + b ** 2) ** 0.5;
-// };
-const getTouchesXY = ts => {
-  const pos = {
-    x: 0,
-    y: 0,
-  };
-  if (ts.length === 1) {
-    pos.x = ts[0].pageX;
-    pos.y = ts[0].pageY;
-  } else if (ts.length >= 2) {
-    pos.x = (ts[0].pageX + ts[1].pageX) / 2;
-    pos.y = (ts[0].pageY + ts[1].pageY) / 2;
-  }
-  return pos;
-};
-const loadModels = models => {
-  if (!Array.isArray(models)) throw new Error('models must be an array');
-  return Promise.all(
-    models.map(({ type, model }) => {
-      return new Promise((resolve, reject) => {
-        switch (type) {
-          case 'fbx': {
-            import('three/examples/js/loaders/FBXLoader').then(() => {
-              // Note : window. is required here to make it works.
-              const loader = new window.THREE.FBXLoader();
-              // Have fun here
-              //console.log('loader:', loader);
-              loader.load(
-                model,
-                function(obj) {
-                  resolve(obj);
-                  //scene.add( gltf.scene );
-                },
-                undefined,
-                function(error) {
-                  reject(error);
-                }
-              );
-            });
-            break;
-          }
-          case 'gltf': {
-            const loader = new GLTFLoader();
 
-            loader.load(
-              model,
-              function(gltf) {
-                resolve(gltf.scene);
-              },
-              undefined,
-              function(error) {
-                reject(error);
-              }
-            );
-            break;
-          }
-          default: {
-            throw new Error('Unknown model type ' + type);
-          }
-        }
-      });
-    })
-  );
-};
-//get the distance between 2 angles
-//alpha and beta must be normalized between 0 and Math.PI*2
-const angularDistance = (alpha, beta) => {
-  const pi = Math.PI;
-  const tau = pi * 2;
-  // This is either the distance or 2pi - distance
-  const phi = Math.abs(beta - alpha) % tau;
-  const distance = phi > pi ? tau - phi : phi;
-  return distance;
-};
-//endregion
 class Scene extends Component {
   //scene scale
   scl = 3;
@@ -105,13 +20,8 @@ class Scene extends Component {
   sunX = 0;
   sunY = 0;
   sunZ = 0;
-  MOUSE = {
-    none: -1,
-    left: 0,
-    middle: 1,
-    right: 2,
-  };
-  mouseDownType = -1;
+  MOUSE = mouseDownTypes;
+  mouseDownType = mouseDownTypes.none;
   mx = 0;
   my = 0;
   colours = {
