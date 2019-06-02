@@ -13,9 +13,9 @@ class Scene extends Component {
   scl = 3;
   //camera x,y,z offset
   o = {
-    x: 0,
+    x: 20,
     y: 6,
-    z: 0,
+    z: 20,
   };
   //x, y, z, phi, theta, distance coords of the sun
   sun = null;
@@ -41,7 +41,7 @@ class Scene extends Component {
     mieDirectionalG: 0.8,
     luminance: 1,
     inclination: 0.2,
-    azimuth: 0.49,
+    azimuth: 0.4,
     sun: true,
   };
   updateSkyAndSun = (sky, sunSphere, settings) => {
@@ -135,19 +135,22 @@ class Scene extends Component {
 
     this.loadAndSetupModels();
   };
+  updateAmbientLightBrightness = brightness => {
+    this.aLight.intensity = 0.2 * brightness;
+    this.hLight.intensity = 0.5 * brightness;
+  };
   createAndSetupSky = () => {
     const { scene, renderer, colours, brightness } = this;
 
     //setup ambient light
 
-    const aLight = new THREE.AmbientLight(colours.sky, 0.2 * brightness); // soft white light
+    const aLight = new THREE.AmbientLight(colours.sky); // soft white light
     scene.add(aLight);
-    const hLight = new THREE.HemisphereLight(
-      colours.sky,
-      colours.groundLight,
-      0.5 * brightness
-    );
+    this.aLight = aLight;
+    const hLight = new THREE.HemisphereLight(colours.sky, colours.groundLight);
     scene.add(hLight);
+    this.hLight = hLight;
+    this.updateAmbientLightBrightness(brightness);
     // this.ambientLight = aLight;
     // this.hemiLight = hLight;
 
@@ -177,9 +180,9 @@ class Scene extends Component {
       dLight.shadow.mapSize.height = 1024;
     }
 
-    const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
-    this.dLightHelper = dLightHelper;
-    scene.add(dLightHelper);
+    // const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
+    //this.dLightHelper = dLightHelper;
+    //scene.add(dLightHelper);
     scene.add(dLight);
     scene.add(dLight.target);
     this.dLight = dLight;
@@ -212,10 +215,10 @@ class Scene extends Component {
     loadModels([{ type: 'gltf', model: treeGLTF }])
       .then(objOriginal => {
         objOriginal = objOriginal[0];
-        const objs = [];
-        for (let i = 0; i < 20; i++) {
+        const objs = [objOriginal];
+        for (let i = 0; i < 900; i++) {
           const newObj = objOriginal.clone();
-          const rndInCircle = randomPositionInCircle(500);
+          const rndInCircle = randomPositionInCircle(1000);
           newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
           newObj.rotation.y = Math.random() * Math.PI * 2;
           objs.push(newObj);
@@ -229,7 +232,7 @@ class Scene extends Component {
             if (o.isMesh) {
               o.castShadow = true;
               o.receiveShadow = true;
-
+              //TODO: will need a better way to determine what has alpha
               if (o.name.includes('leaf')) {
                 //this allows transparent textures such a tree leaves
                 o.material.transparent = true;
@@ -471,7 +474,7 @@ class Scene extends Component {
     //WARN: sun is undefined...
     const { phi = 0, theta } = this.sun || {};
     const dLight = this.dLight;
-    const dLightHelper = this.dLightHelper;
+    //const dLightHelper = this.dLightHelper;
     //might need to take into account the inclination of the sun
     //to set the left/right relative to the top/bottom
     //position the shadow camera so it fits nicely in the camera view
@@ -492,19 +495,20 @@ class Scene extends Component {
       // dLight.shadow.camera.bottom =
       //   -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sb)) * this.scl;
       dLight.shadow.camera.updateProjectionMatrix();
-      dLightHelper.update();
+      //dLightHelper.update();
     }
     camera.lookAt(o.x, o.y * this.scl, o.z);
   };
   frame = 0;
-  aziA = -0.00762;
+  aziA = -0.01;
   frameAzi = 0;
   aziAFrames = 60 * 60; //1 min
   t0 = 0;
   lastMs = 0;
   daynight = {
-    minutes: 8,
+    minutes: 0.5,
   };
+  aziHeight = 0;
   animate = ms => {
     ms = Math.round(ms / 10);
     const enableCamShowcase = false;
@@ -572,6 +576,8 @@ class Scene extends Component {
       //console.log(this.aziA);
       this.lastMs = ms;
       let azi = this.aziA % 1;
+      //between 0 and 1, where 1 is highest in the sky, and 0 is the horizon.
+      this.aziHeight = Math.abs((azi % 0.5) - 0.25) * 4;
       const maxMieDG = 0.9;
       let mieDG = maxMieDG;
       const mieDGRange = 0.1;
@@ -594,7 +600,9 @@ class Scene extends Component {
       //   //between 0.05 and 0.45
 
       // }
-      rayleigh = Math.abs((azi % 0.5) - 0.25) * 8 + 2;
+
+      //between 2 and 4, where 2 is on the horizon, and 4 is high in the sky
+      rayleigh = this.aziHeight * 2 + 2;
       console.log('rayleigh', rayleigh);
       //console.log('angle', angle, 'azi', azi, 'day?', angle <= Math.PI);
       this.updateSkyAndSun(this.sky, this.sunSphere, {
@@ -603,6 +611,10 @@ class Scene extends Component {
         mieDirectionalG: mieDG,
         rayleigh,
       });
+
+      //update ambient light based on aziHeight
+      this.brightness = 1 - this.aziHeight ** 4;
+
       this.frameAzi++;
       // this.dLight.shadow.camera.updateProjectionMatrix();
       // this.dLightHelper.update();
@@ -644,26 +656,37 @@ class Scene extends Component {
       if (
         !intersection ||
         intersection.length === 0 ||
-        groundPoint.distanceTo(this.camera.position) > 300
+        groundPoint.distanceTo(this.camera.position) > 100
       ) {
         groundPoint.copy(this.camera.position);
       }
 
       if (groundPoint) {
-        //cam view intersects with ground plane at groundPoint
-        //add groundPoint x,y,z to the directional light position and target point.
+        let dy = this.sun.y * this.scl + groundPoint.y;
+        if (this.sun.y > -1 * this.scl) {
+          if (!dLight.visible) dLight.visible = true;
+        } else {
+          dLight.visible = false;
+          this.brightness = 0.0001;
+        }
         dLight.target.position.copy(groundPoint);
         dLight.position.set(
           this.sun.x * this.scl + groundPoint.x,
-          this.sun.y * this.scl + groundPoint.y,
+          dy,
           this.sun.z * this.scl + groundPoint.z
         );
+        //cam view intersects with ground plane at groundPoint
+        //add groundPoint x,y,z to the directional light position and target point.
       }
       //dLight.shadow.camera.updateProjectionMatrix();
     };
     //translateCamera();
     //if (this.mouseDownType === this.MOUSE.left) {
     translateShadow();
+
+    if (this.brightness > 0) {
+      this.updateAmbientLightBrightness(this.brightness);
+    }
     //}
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
     //this.dLight.position.set(-x * 10, y * 10, -z * 10);

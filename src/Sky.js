@@ -73,7 +73,7 @@ Sky.SkyShader = {
 
     // earth shadow hack
     // cutoffAngle = pi / 1.95;
-    'const float cutoffAngle = 2.0;', //1.6110731556870734;',
+    'const float cutoffAngle = 1.9;', //1.6110731556870734;',
     'const float steepness = 1.5;',
     'const float EE = 1000.0;',
 
