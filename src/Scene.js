@@ -332,7 +332,7 @@ class Scene extends Component {
         camera.rotation.x += x / Math.PI;
       }
       if (Math.abs(y) > 0.05) {
-        camera.rotation.y += y / Math.PI;
+        //camera.rotation.y += y / Math.PI;
       }
       if (Math.abs(z) > 0.05) {
         camera.rotation.z += z / Math.PI;
