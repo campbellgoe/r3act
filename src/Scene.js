@@ -348,11 +348,14 @@ class Scene extends Component {
     if (window.DeviceOrientationEvent) {
       importDeviceOrientationControls().then(DeviceOrientationControls => {
         const controls = new DeviceOrientationControls(this.camera);
-        if (Object.keys(controls.deviceOrientation).length > 0) {
-          console.log(controls);
+        console.log(
+          'controls',
+          controls,
+          '..',
+          Object.keys(controls.deviceOrientation).length
+        );
+        if (Object.keys(controls.deviceOrientation).length) {
           this.orientationControls = controls;
-        } else {
-          console.log('device orientation not supported');
         }
       });
     }
