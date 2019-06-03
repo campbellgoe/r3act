@@ -345,11 +345,13 @@ class Scene extends Component {
     document.addEventListener('touchstart', onInput);
     document.addEventListener('touchmove', onInput);
     document.addEventListener('touchend', onInput);
-
-    importDeviceOrientationControls().then(DeviceOrientationControls => {
-      const controls = new DeviceOrientationControls(this.camera);
-      this.orientationControls = controls;
-    });
+    if (window.DeviceOrientationEvent) {
+      importDeviceOrientationControls().then(DeviceOrientationControls => {
+        const controls = new DeviceOrientationControls(this.camera);
+        console.log(controls);
+        this.orientationControls = controls;
+      });
+    }
 
     this.mount.appendChild(this.renderer.domElement);
     this.start();
@@ -519,7 +521,7 @@ class Scene extends Component {
   t0 = 0;
   lastMs = 0;
   daynight = {
-    minutes: 0.5,
+    minutes: 1,
   };
   aziHeight = 0;
   animate = ms => {
