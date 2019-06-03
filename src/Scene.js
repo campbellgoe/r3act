@@ -348,6 +348,12 @@ class Scene extends Component {
     if (window.DeviceOrientationEvent) {
       importDeviceOrientationControls().then(DeviceOrientationControls => {
         const controls = new DeviceOrientationControls(this.camera);
+        if (
+          controls.deviceOrientation &&
+          controls.deviceOrientation.type === 'deviceorientation'
+        ) {
+          this.orientationControls = controls;
+        }
         console.log(
           'controls',
           controls,
@@ -355,7 +361,6 @@ class Scene extends Component {
           Object.keys(controls.deviceOrientation).length
         );
         if (Object.keys(controls.deviceOrientation).length) {
-          this.orientationControls = controls;
         }
       });
     }
