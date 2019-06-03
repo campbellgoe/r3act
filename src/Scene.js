@@ -216,9 +216,9 @@ class Scene extends Component {
       .then(objOriginal => {
         objOriginal = objOriginal[0];
         const objs = [objOriginal];
-        for (let i = 0; i < 900; i++) {
+        for (let i = 0; i < 400; i++) {
           const newObj = objOriginal.clone();
-          const rndInCircle = randomPositionInCircle(1000);
+          const rndInCircle = randomPositionInCircle(700);
           newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
           newObj.rotation.y = Math.random() * Math.PI * 2;
           objs.push(newObj);
@@ -320,6 +320,13 @@ class Scene extends Component {
     //translateCamera();
     //translateShadow();
   };
+  onGyroReading = e => {
+    const { x, y, z } = this.gyroscope;
+    const { camera } = this;
+    if (camera) {
+      camera.setRotationFromEuler(new THREE.Euler(x, y, z));
+    }
+  };
   componentDidMount() {
     window.THREE = THREE;
     this.width = window.innerWidth;
@@ -337,7 +344,13 @@ class Scene extends Component {
     document.addEventListener('touchstart', onInput);
     document.addEventListener('touchmove', onInput);
     document.addEventListener('touchend', onInput);
-
+    if (window.Gyroscope) {
+      let gyroscope = new window.Gyroscope({ frequency: 60 });
+      const onGyroReading = this.onGyroReading;
+      this.gyroscope = gyroscope;
+      gyroscope.addEventListener('reading', onGyroReading);
+      gyroscope.start();
+    }
     this.mount.appendChild(this.renderer.domElement);
     this.start();
   }
@@ -354,6 +367,10 @@ class Scene extends Component {
     document.removeEventListener('touchstart', onInput);
     document.removeEventListener('touchmove', onInput);
     document.removeEventListener('touchend', onInput);
+    if (this.gyroscope) {
+      const onGyroReading = this.onGyroReading;
+      this.gyroscope.removeEventListener('reading', onGyroReading);
+    }
     this.stop();
     this.mount.removeChild(this.renderer.domElement);
   }
