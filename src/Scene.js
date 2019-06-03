@@ -324,6 +324,7 @@ class Scene extends Component {
     const { x, y, z } = this.gyroscope;
     const { camera } = this;
     if (camera) {
+      //x->x, y->z, z->y
       console.log('x', x);
       console.log('y', y);
       //console.log('z', z);
@@ -331,7 +332,7 @@ class Scene extends Component {
         camera.rotation.x += x;
       }
       if (Math.abs(y) > 0.05) {
-        camera.rotation.y += y;
+        camera.rotation.z += y;
       }
       //camera.rotation.z += z;
     }
