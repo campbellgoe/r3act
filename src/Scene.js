@@ -348,24 +348,7 @@ class Scene extends Component {
     if (window.DeviceOrientationEvent) {
       importDeviceOrientationControls().then(DeviceOrientationControls => {
         const controls = new DeviceOrientationControls(this.camera);
-        controls.update();
-        if (
-          controls.deviceOrientation &&
-          controls.deviceOrientation.type === 'deviceorientation'
-        ) {
-          this.orientationControls = controls;
-        } else {
-          console.log('set camera');
-          this.camera.lookAt(this.o.x, this.o.y * this.scl, this.o.z);
-        }
-        console.log(
-          'controls',
-          controls,
-          '..',
-          Object.keys(controls.deviceOrientation).length
-        );
-        if (Object.keys(controls.deviceOrientation).length) {
-        }
+        this.orientationControls = controls;
       });
     }
 
@@ -545,7 +528,10 @@ class Scene extends Component {
     const enableCamShowcase = false;
     const cam = this.camera;
     const o = this.o;
-    if (this.orientationControls) {
+    if (
+      this.orientationControls &&
+      this.orientationControls.deviceOrientation.type === 'deviceorientation'
+    ) {
       this.orientationControls.update();
     }
     //const cube = this.cube;
