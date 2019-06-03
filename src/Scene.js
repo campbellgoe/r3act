@@ -329,13 +329,13 @@ class Scene extends Component {
       console.log('y', y);
       //console.log('z', z);
       if (Math.abs(x) > 0.05) {
-        camera.rotation.x += x / 180;
+        camera.rotation.x += x / Math.PI;
       }
       if (Math.abs(y) > 0.05) {
-        camera.rotation.y += y / 180;
+        camera.rotation.y += y / Math.PI;
       }
       if (Math.abs(z) > 0.05) {
-        camera.rotation.z += z / 180;
+        camera.rotation.z += z / Math.PI;
       }
 
       //camera.rotation.z += z;
