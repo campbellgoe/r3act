@@ -326,10 +326,14 @@ class Scene extends Component {
     if (camera) {
       console.log('x', x);
       console.log('y', y);
-      console.log('z', z);
-      camera.rotation.x += x;
-      camera.rotation.y += y;
-      camera.rotation.z += z;
+      //console.log('z', z);
+      if (Math.abs(x) > 0.05) {
+        camera.rotation.x += x;
+      }
+      if (Math.abs(y) > 0.05) {
+        camera.rotation.y += y;
+      }
+      //camera.rotation.z += z;
     }
   };
   componentDidMount() {
