@@ -322,8 +322,11 @@ class Scene extends Component {
   };
   onGyroReading = e => {
     const { x, y, z } = this.gyroscope;
-    const { camera } = this;
+    const { camera, o } = this;
     if (camera) {
+      o.x = x;
+      o.y = y;
+      o.z = z;
       camera.setRotationFromEuler(new THREE.Euler(x, y, z));
     }
   };
