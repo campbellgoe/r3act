@@ -311,7 +311,7 @@ class Scene extends Component {
       //this.drx
       this.drx = rx % 1;
       this.dry = Math.max(0.05, ry);
-      console.log('dry:', ry, 'mx', mx, 'my', my);
+      //console.log('dry:', ry, 'mx', mx, 'my', my);
     }
 
     if (this.mouseDownType === this.MOUSE.left) {
@@ -322,12 +322,14 @@ class Scene extends Component {
   };
   onGyroReading = e => {
     const { x, y, z } = this.gyroscope;
-    const { camera, o } = this;
+    const { camera } = this;
     if (camera) {
-      o.x = x;
-      o.y = y;
-      o.z = z;
-      camera.setRotationFromEuler(new THREE.Euler(x, y, z));
+      console.log('x', x);
+      console.log('y', y);
+      console.log('z', z);
+      camera.rotation.x += x;
+      camera.rotation.y += y;
+      camera.rotation.z += z;
     }
   };
   componentDidMount() {
@@ -499,7 +501,7 @@ class Scene extends Component {
     //to set the left/right relative to the top/bottom
     //position the shadow camera so it fits nicely in the camera view
     if (dLight) {
-      console.log('phi', phi);
+      // console.log('phi', phi);
       // dLight.shadow.camera.left = sl;
       // dLight.shadow.camera.right = sr;
 
@@ -623,7 +625,7 @@ class Scene extends Component {
 
       //between 2 and 4, where 2 is on the horizon, and 4 is high in the sky
       rayleigh = this.aziHeight * 2 + 2;
-      console.log('rayleigh', rayleigh);
+      //console.log('rayleigh', rayleigh);
       //console.log('angle', angle, 'azi', azi, 'day?', angle <= Math.PI);
       this.updateSkyAndSun(this.sky, this.sunSphere, {
         ...this.skySettings,
