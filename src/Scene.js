@@ -348,7 +348,7 @@ class Scene extends Component {
     if (window.DeviceOrientationEvent) {
       importDeviceOrientationControls().then(DeviceOrientationControls => {
         const controls = new DeviceOrientationControls(this.camera);
-        if (controls.deviceOrientation instanceof DeviceOrientationEvent) {
+        if (Object.keys(controls.deviceOrientation).length > 0) {
           console.log(controls);
           this.orientationControls = controls;
         } else {
