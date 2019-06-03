@@ -6,6 +6,14 @@ import { randomPositionInCircle, angularDistance } from './utils/geom.js';
 import { getTouchesXY, mouseDownTypes } from './utils/input.js';
 import loadModels from './utils/loadModels.js';
 import Sky from './Sky';
+
+const importDeviceOrientationControls = () => {
+  return import('three/examples/js/controls/DeviceOrientationControls.js').then(
+    () => {
+      return window.THREE.DeviceOrientationControls;
+    }
+  );
+};
 //import treeFBX from './models/tree-1-fbx/trees1.fbx';
 
 class Scene extends Component {
@@ -320,27 +328,6 @@ class Scene extends Component {
     //translateCamera();
     //translateShadow();
   };
-  onGyroReading = e => {
-    const { x, y, z } = this.gyroscope;
-    const { camera } = this;
-    if (camera) {
-      //x->x, y->z, z->y
-      console.log('x', x);
-      console.log('y', y);
-      //console.log('z', z);
-      if (Math.abs(x) > 0.05) {
-        camera.rotation.x += x / Math.PI;
-      }
-      if (Math.abs(y) > 0.05) {
-        //camera.rotation.y += y / Math.PI;
-      }
-      if (Math.abs(z) > 0.05) {
-        camera.rotation.z += z / Math.PI;
-      }
-
-      //camera.rotation.z += z;
-    }
-  };
   componentDidMount() {
     window.THREE = THREE;
     this.width = window.innerWidth;
@@ -358,13 +345,12 @@ class Scene extends Component {
     document.addEventListener('touchstart', onInput);
     document.addEventListener('touchmove', onInput);
     document.addEventListener('touchend', onInput);
-    if (window.Gyroscope) {
-      let gyroscope = new window.Gyroscope({ frequency: 60 });
-      const onGyroReading = this.onGyroReading;
-      this.gyroscope = gyroscope;
-      gyroscope.addEventListener('reading', onGyroReading);
-      gyroscope.start();
-    }
+
+    importDeviceOrientationControls().then(DeviceOrientationControls => {
+      const controls = new DeviceOrientationControls(this.camera);
+      this.orientationControls = controls;
+    });
+
     this.mount.appendChild(this.renderer.domElement);
     this.start();
   }
@@ -381,10 +367,6 @@ class Scene extends Component {
     document.removeEventListener('touchstart', onInput);
     document.removeEventListener('touchmove', onInput);
     document.removeEventListener('touchend', onInput);
-    if (this.gyroscope) {
-      const onGyroReading = this.onGyroReading;
-      this.gyroscope.removeEventListener('reading', onGyroReading);
-    }
     this.stop();
     this.mount.removeChild(this.renderer.domElement);
   }
@@ -545,6 +527,9 @@ class Scene extends Component {
     const enableCamShowcase = false;
     const cam = this.camera;
     const o = this.o;
+    if (this.orientationControls) {
+      this.orientationControls.update();
+    }
     //const cube = this.cube;
     if (enableCamShowcase) {
       // cube.rotation.x += 0.01;
