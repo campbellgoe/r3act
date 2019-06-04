@@ -169,6 +169,7 @@ class Scene extends Component {
     const dLight = new THREE.DirectionalLight(colours.sunlight, 2 * brightness);
     //dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
     dLight.castShadow = true;
+    dLight.shadow.bias = 0.000008;
     dLight.shadow.camera.zoom = 1;
     dLight.shadow.camera.right = 60 * this.scl;
     dLight.shadow.camera.left = -60 * this.scl;
