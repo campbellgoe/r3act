@@ -6,7 +6,7 @@ import { randomPositionInCircle, angularDistance } from './utils/geom.js';
 import { getTouchesXY, mouseDownTypes } from './utils/input.js';
 import loadModels from './utils/loadModels.js';
 import Sky from './Sky';
-
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 const importDeviceOrientationControls = () => {
   return import('three/examples/js/controls/DeviceOrientationControls.js').then(
     () => {
@@ -134,7 +134,6 @@ class Scene extends Component {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setClearColor(colours.sky);
     renderer.setSize(width, height);
-
     this.createAndSetupSky();
 
     this.createGround();
@@ -266,68 +265,6 @@ class Scene extends Component {
         console.error('error loading models', err);
       });
   };
-  onInput = e => {
-    const w = this.width;
-    const h = this.height;
-    //determine mouse x,y position and mouseDownType (none, left, middle, right)
-    let mx = this.mx;
-    let my = this.my;
-    if (e.type.startsWith('mouse')) {
-      if (e.type.endsWith('down')) {
-        this.mouseDownType = e.button;
-        mx = e.pageX;
-        my = e.pageY;
-      }
-      if (e.type.endsWith('move')) {
-        mx = e.pageX;
-        my = e.pageY;
-      }
-      if (e.type.endsWith('up')) {
-        this.mouseDownType = this.MOUSE.none;
-      }
-    } else if (e.type.startsWith('touch')) {
-      if (e.type.endsWith('start')) {
-        if (e.touches.length === 1) {
-          this.mouseDownType = this.MOUSE.left;
-        } else if (e.touches.length >= 2) {
-          this.mouseDownType = this.MOUSE.right;
-        }
-        const pos = getTouchesXY(e.touches);
-        mx = pos.x;
-        my = pos.y;
-      }
-      if (e.type.endsWith('move')) {
-        const pos = getTouchesXY(e.touches);
-        mx = pos.x;
-        my = pos.y;
-      }
-      if (e.type.endsWith('end')) {
-        if (e.touches.length === 0) {
-          this.mouseDownType = this.MOUSE.none;
-        }
-      }
-    }
-    this.mx = mx;
-    this.my = my;
-
-    const { drx, dry, rx, ry } = this.calculatePositionsFromMouse(mx, my);
-    if (e.type === 'mousedown' || e.type === 'touchstart') {
-      this.drx = rx % 1;
-      this.dry = ry % 1;
-    }
-    if (e.type === 'mouseup' || e.type === 'touchend') {
-      //this.drx
-      this.drx = rx % 1;
-      this.dry = Math.max(0.05, ry);
-      //console.log('dry:', ry, 'mx', mx, 'my', my);
-    }
-
-    if (this.mouseDownType === this.MOUSE.left) {
-      this.orbitCamera();
-    }
-    //translateCamera();
-    //translateShadow();
-  };
   componentDidMount() {
     window.THREE = THREE;
     this.width = window.innerWidth;
@@ -336,15 +273,10 @@ class Scene extends Component {
     const scene = new THREE.Scene();
     this.scene = scene;
     this.setupScene();
-    //disable right click menu
-    document.addEventListener('contextmenu', e => e.preventDefault() || false);
-    const onInput = this.onInput;
-    document.addEventListener('mousedown', onInput);
-    document.addEventListener('mousemove', onInput);
-    document.addEventListener('mouseup', onInput);
-    document.addEventListener('touchstart', onInput);
-    document.addEventListener('touchmove', onInput);
-    document.addEventListener('touchend', onInput);
+    const controls = new OrbitControls(this.camera, this.renderer.domElement);
+    //controls.addEventListener( 'change', render );
+    this.cameraControls = controls;
+
     if (window.DeviceOrientationEvent) {
       importDeviceOrientationControls().then(DeviceOrientationControls => {
         const controls = new DeviceOrientationControls(this.camera);
@@ -357,17 +289,6 @@ class Scene extends Component {
   }
 
   componentWillUnmount() {
-    document.removeEventListener(
-      'contextmenu',
-      e => e.preventDefault() || false
-    );
-    const onInput = this.onInput;
-    document.removeEventListener('mousedown', onInput);
-    document.removeEventListener('mousemove', onInput);
-    document.removeEventListener('mouseup', onInput);
-    document.removeEventListener('touchstart', onInput);
-    document.removeEventListener('touchmove', onInput);
-    document.removeEventListener('touchend', onInput);
     this.stop();
     this.mount.removeChild(this.renderer.domElement);
   }
@@ -380,138 +301,6 @@ class Scene extends Component {
 
   stop = () => {
     cancelAnimationFrame(this.frameId);
-  };
-  //rx/ry is relative x,y - between 0 and 1, where 1 is the screen width/height
-  //ax and ay - absolute x,y for camera coordinates
-  //zoom is determined by relative y
-  //zoomAbs - absolute zoom for positioning the camera
-  calculatePositionsFromMouse = (mx, my) => {
-    const drx = this.drx;
-    const dry = this.dry;
-    const w = this.width;
-    const h = this.height;
-    const rx = (mx / w - drx) % 1;
-    const ax = rx * 80 * this.scl - 40 * this.scl;
-    const ry = Math.min(my / h - dry, 0.99) % 1;
-    const ay = ry * 80 * this.scl - 20 * this.scl;
-    let zoom = Math.max(0.05 * this.scl, ry);
-    let zoomAbs = 40 * this.scl * zoom;
-    return {
-      mx,
-      my,
-      rx,
-      ry,
-      ax,
-      ay,
-      zoom,
-      zoomAbs,
-      drx,
-      dry,
-      w,
-      h,
-    };
-  };
-  orbitCamera = () => {
-    let {
-      mx,
-      my,
-      rx,
-      ry,
-      ax,
-      ay,
-      drx,
-      dry,
-      w,
-      h,
-      zoom,
-      zoomAbs,
-    } = this.calculatePositionsFromMouse(this.mx, this.my);
-    const camera = this.camera;
-    const o = this.o;
-
-    let camOrbitAngle = rx * Math.PI * 2;
-    //camera.position.x = ax;
-    camera.position.x = Math.cos(camOrbitAngle) * zoomAbs + o.x;
-
-    camera.position.z = Math.sin(camOrbitAngle) * zoomAbs + o.z;
-    //camera.position.z = ay;
-    camera.position.y = Math.max(ry, 0.05) * 80 + o.y;
-
-    //zoom = Math.max(0.075 * this.scl, zoom);
-    //zoomAbs = 40 * this.scl * zoom;
-    // zoom = camera.position.y / 100;
-    // zoomAbs = camera.position.y;
-    //const sl = (w - mx) ** 0.5;
-    //const sr = mx ** 0.5;
-    //use camOrbitAngle to determine shadow camera left, right, top, bottom etc.
-    /*
-    if angle is between 0 and Math.PI/2
-  */
-    //phi is angle around y, theta is inclination/height in the sky
-
-    // const sm = Math.min(Math.max(zoom, 0.7), 1.2);
-    // let st = 0.1;
-    // let sr = 0.1;
-    // let sb = 0.1;
-    // let sl = 0.1;
-    //camOrbitAngle = camOrbitAngle - Math.PI;
-    // sb = angularDistance(camOrbitAngle, Math.PI / 4) / Math.PI;
-    // sl = angularDistance(camOrbitAngle, (Math.PI / 4) * 3) / Math.PI;
-    // st = angularDistance(camOrbitAngle, Math.PI / 4 + Math.PI) / Math.PI;
-    // sr = angularDistance(camOrbitAngle, (Math.PI / 4) * 3 + Math.PI) / Math.PI;
-
-    // if (camOrbitAngle < Math.PI / 2) {
-    //   console.log('%cbtm', 'background-color:blue;color:white;');
-    //   //
-    // } else if (camOrbitAngle <= Math.PI) {
-    //   console.log('%clft', 'background-color:green;color:white;');
-    //   //((Math.PI/4)*3)
-    // } else if (camOrbitAngle <= Math.PI + Math.PI / 2) {
-    //   console.log('%ctop', 'background-color:orange;color:white;');
-    //   //(Math.PI/4)+Math.PI
-    // } else {
-    //   console.log('%crgt', 'background-color:red;color:white;');
-    //   //((Math.PI/4)*3)+Math.PI
-    // }
-
-    // const sarr = { st, sr, sb, sl };
-    // st = (sarr.st * 2 + (sarr.sl + sarr.sr)) * 20;
-    // sr = (sarr.sr * 2 + (sarr.st + sarr.sb)) * 20;
-    // sb = (sarr.sb * 2 + (sarr.sr + sarr.sl)) * 20;
-    // sl = (sarr.sl * 2 + (sarr.sb + sarr.st)) * 20;
-    // // st = camOrbitAngle;
-    // // sr = st;
-    // // sb = st;
-    // // sl = st;
-    // const sMax = 1000 * this.scl;
-    // const sMin = 0.1 * this.scl;
-    //WARN: sun is undefined...
-    const { phi = 0, theta } = this.sun || {};
-    const dLight = this.dLight;
-    //const dLightHelper = this.dLightHelper;
-    //might need to take into account the inclination of the sun
-    //to set the left/right relative to the top/bottom
-    //position the shadow camera so it fits nicely in the camera view
-    if (dLight) {
-      // console.log('phi', phi);
-      // dLight.shadow.camera.left = sl;
-      // dLight.shadow.camera.right = sr;
-
-      // dLight.shadow.camera.top = st;
-      // dLight.shadow.camera.bottom = sb;
-
-      // dLight.shadow.camera.left =
-      //   -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sl)) * this.scl;
-      // dLight.shadow.camera.right =
-      //   Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sr)) * this.scl;
-      // dLight.shadow.camera.top =
-      //   Math.max(sMin, Math.min(sMax, zoomAbs ** sm * st)) * this.scl;
-      // dLight.shadow.camera.bottom =
-      //   -Math.max(sMin, Math.min(sMax, zoomAbs ** sm * sb)) * this.scl;
-      dLight.shadow.camera.updateProjectionMatrix();
-      //dLightHelper.update();
-    }
-    camera.lookAt(o.x, o.y * this.scl, o.z);
   };
   frame = 0;
   aziA = -0.01;
@@ -534,6 +323,7 @@ class Scene extends Component {
     ) {
       this.orientationControls.update();
     }
+    this.cameraControls.update();
     //const cube = this.cube;
     if (enableCamShowcase) {
       // cube.rotation.x += 0.01;
