@@ -2,7 +2,11 @@ import React, { Component } from 'react';
 import * as THREE from 'three';
 import Resize from './Resize';
 import treeGLTF from './models/tree-1/scene.gltf';
-import { randomPositionInCircle, angularDistance } from './utils/geom.js';
+import {
+  randomPositionInCircle,
+  angularDistance,
+  distance,
+} from './utils/geom.js';
 import { getTouchesXY, mouseDownTypes } from './utils/input.js';
 import loadModels from './utils/loadModels.js';
 import Sky from './Sky';
@@ -171,8 +175,8 @@ class Scene extends Component {
     dLight.castShadow = true;
     dLight.shadow.bias = 0.000008;
     dLight.shadow.camera.zoom = 1;
-    dLight.shadow.camera.right = 60 * this.scl;
-    dLight.shadow.camera.left = -60 * this.scl;
+    dLight.shadow.camera.right = 40 * this.scl;
+    dLight.shadow.camera.left = -40 * this.scl;
     dLight.shadow.camera.top = 40 * this.scl;
     dLight.shadow.camera.bottom = -40 * this.scl;
     dLight.shadow.camera.far = distance * 2 * this.scl;
@@ -188,9 +192,9 @@ class Scene extends Component {
       dLight.shadow.mapSize.height = 1024;
     }
 
-    // const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
-    //this.dLightHelper = dLightHelper;
-    //scene.add(dLightHelper);
+    const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
+    this.dLightHelper = dLightHelper;
+    scene.add(dLightHelper);
     scene.add(dLight);
     scene.add(dLight.target);
     this.dLight = dLight;
@@ -310,7 +314,7 @@ class Scene extends Component {
   t0 = 0;
   lastMs = 0;
   daynight = {
-    minutes: 1,
+    minutes: 3,
   };
   aziHeight = 0;
   animate = ms => {
@@ -427,8 +431,8 @@ class Scene extends Component {
       this.brightness = 1 - this.aziHeight ** 4;
 
       this.frameAzi++;
-      // this.dLight.shadow.camera.updateProjectionMatrix();
-      // this.dLightHelper.update();
+      this.dLight.shadow.camera.updateProjectionMatrix();
+      this.dLightHelper.update();
       // this.camera.updateProjectionMatrix();
     }
     // const translateCamera = () => {
@@ -437,6 +441,7 @@ class Scene extends Component {
     //   cam.position.x += xd;
     // };
     const translateShadow = () => {
+      const camera = this.camera;
       const dLight = this.dLight;
       if (!dLight) return;
       const raycaster = new THREE.Raycaster();
@@ -444,51 +449,73 @@ class Scene extends Component {
 
       center.x = 0; //rx * 2 - 1;
       center.y = 0; //ry * 2 - 1;
-
+      const rayDistance = Math.max(100, camera.position.y);
       raycaster.setFromCamera(center, cam);
-
+      let resultPosition = new THREE.Vector3();
+      let ray = raycaster.ray;
+      ray.at(rayDistance, resultPosition);
+      resultPosition.y = 0;
       // calculate objects intersecting the picking ray
-      const intersects = raycaster.intersectObject(this.plane.entity);
-      let groundPoint;
-      let intersection;
-      if (intersects.length > 1) {
-        console.warn('how can intersects a flat plane be > 1?', intersects);
-        //throw new Error('how can intersects be > 1?');
-      }
-      if (Array.isArray(intersects) && intersects.length > 0) {
-        intersection = intersects[0];
-      }
-      if (intersection) {
-        groundPoint = intersection.point;
-      }
-      if (!groundPoint) {
-        groundPoint = new THREE.Vector3(this.camera.position);
-      }
-      if (
-        !intersection ||
-        intersection.length === 0 ||
-        groundPoint.distanceTo(this.camera.position) > 100
-      ) {
-        groundPoint.copy(this.camera.position);
-      }
+      // const intersects = raycaster.intersectObject(this.plane.entity);
+      // let groundPoint;
+      // let intersection;
+      // if (intersects.length > 1) {
+      //   console.warn('how can intersects a flat plane be > 1?', intersects);
+      //   //throw new Error('how can intersects be > 1?');
+      // }
+      // if (Array.isArray(intersects) && intersects.length > 0) {
+      //   intersection = intersects[0];
+      // }
+      // if (intersection) {
+      //   groundPoint = intersection.point;
+      // }
+      // if (!groundPoint) {
+      //   groundPoint = new THREE.Vector3(this.camera.position);
+      // }
+      // if (
+      //   !intersection ||
+      //   intersection.length === 0 ||
+      //   groundPoint.distanceTo(this.camera.position) > 100
+      // ) {
+      //   groundPoint.copy(this.camera.position);
+      // }
 
-      if (groundPoint) {
-        let dy = this.sun.y * this.scl + groundPoint.y;
+      let distCamToShadow = distance(
+        {
+          x: resultPosition.x,
+          y: resultPosition.z,
+        },
+        {
+          x: camera.position.x,
+          y: camera.position.z,
+        }
+      );
+      if (resultPosition) {
+        //enable sunlight when it is above the horizon, disable it below
         if (this.sun.y > -1 * this.scl) {
           if (!dLight.visible) dLight.visible = true;
         } else {
           dLight.visible = false;
           this.brightness = 0.0001;
         }
-        dLight.target.position.copy(groundPoint);
+        //translate sunlight shadow cast to where the camera is pointed
+        dLight.target.position.copy(resultPosition);
         dLight.position.set(
-          this.sun.x * this.scl + groundPoint.x,
-          dy,
-          this.sun.z * this.scl + groundPoint.z
+          this.sun.x * this.scl + resultPosition.x,
+          this.sun.y * this.scl + resultPosition.y,
+          this.sun.z * this.scl + resultPosition.z
         );
         //cam view intersects with ground plane at groundPoint
         //add groundPoint x,y,z to the directional light position and target point.
       }
+      /* set shadow size based on camera y position */
+      const cy = Math.min(10, Math.max(0.66, camera.position.y / 20));
+      const cz = Math.max(0.33, distCamToShadow / rayDistance);
+      console.log('zy', cz * cy);
+      dLight.shadow.camera.right = 80 * this.scl * cy * cz;
+      dLight.shadow.camera.left = -80 * this.scl * cy * cz;
+      dLight.shadow.camera.top = 60 * this.scl * cy * cz;
+      dLight.shadow.camera.bottom = -60 * this.scl * cy * cz;
       //dLight.shadow.camera.updateProjectionMatrix();
     };
     //translateCamera();

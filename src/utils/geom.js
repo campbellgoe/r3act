@@ -6,11 +6,11 @@ export const randomPositionInCircle = radius => {
     y: Math.sin(angle) * dist,
   };
 };
-// const distanceSquared = ({ x: ax, y: ay }, { x: bx, y: by }) => {
-//   const a = ax - bx;
-//   const b = ay - by;
-//   return (a ** 2 + b ** 2) ** 0.5;
-// };
+export const distance = ({ x: ax, y: ay }, { x: bx, y: by }) => {
+  const a = ax - bx;
+  const b = ay - by;
+  return (a ** 2 + b ** 2) ** 0.5;
+};
 //get the distance between 2 angles
 //alpha and beta must be normalized between 0 and Math.PI*2
 export const angularDistance = (alpha, beta) => {
@@ -24,5 +24,6 @@ export const angularDistance = (alpha, beta) => {
 const GEOM = {
   randomPositionInCircle,
   angularDistance,
+  distance,
 };
 export default GEOM;
