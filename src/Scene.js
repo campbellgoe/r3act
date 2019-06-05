@@ -18,6 +18,14 @@ const importDeviceOrientationControls = () => {
     }
   );
 };
+const settings = {
+  enableCameraShowcase: false,
+  load: {
+    models: false,
+    lights: false,
+    ground: false,
+  },
+};
 //import treeFBX from './models/tree-1-fbx/trees1.fbx';
 
 class Scene extends Component {
@@ -55,6 +63,8 @@ class Scene extends Component {
     inclination: 0.2,
     azimuth: 0.4,
     sun: true,
+    u_time: 1.0,
+    u_resolution: new THREE.Vector2(),
   };
   updateSkyAndSun = (sky, sunSphere, settings) => {
     let uniforms = sky.material.uniforms;
@@ -63,6 +73,8 @@ class Scene extends Component {
     uniforms['luminance'].value = settings.luminance;
     uniforms['mieCoefficient'].value = settings.mieCoefficient;
     uniforms['mieDirectionalG'].value = settings.mieDirectionalG;
+    uniforms['u_time'].value = settings.u_time;
+    uniforms['u_resolution'].value = settings.u_resolution;
 
     let theta = Math.PI * (settings.inclination - 0.5);
     let phi = 2 * Math.PI * (settings.azimuth - 0.5);
@@ -140,28 +152,33 @@ class Scene extends Component {
     renderer.setSize(width, height);
     this.createAndSetupSky();
 
-    this.createGround();
+    if (settings.load.ground) this.createGround();
 
     //this.createAndSetupFog();
 
-    this.loadAndSetupModels();
+    if (settings.load.models) this.loadAndSetupModels();
   };
   updateAmbientLightBrightness = brightness => {
     this.aLight.intensity = 0.2 * brightness;
     this.hLight.intensity = 0.5 * brightness;
   };
   createAndSetupSky = () => {
-    const { scene, renderer, colours, brightness } = this;
+    if (settings.load.lights) {
+      const { scene, renderer, colours, brightness } = this;
 
-    //setup ambient light
+      //setup ambient light
 
-    const aLight = new THREE.AmbientLight(colours.sky); // soft white light
-    scene.add(aLight);
-    this.aLight = aLight;
-    const hLight = new THREE.HemisphereLight(colours.sky, colours.groundLight);
-    scene.add(hLight);
-    this.hLight = hLight;
-    this.updateAmbientLightBrightness(brightness);
+      const aLight = new THREE.AmbientLight(colours.sky); // soft white light
+      scene.add(aLight);
+      this.aLight = aLight;
+      const hLight = new THREE.HemisphereLight(
+        colours.sky,
+        colours.groundLight
+      );
+      scene.add(hLight);
+      this.hLight = hLight;
+      this.updateAmbientLightBrightness(brightness);
+    }
     // this.ambientLight = aLight;
     // this.hemiLight = hLight;
 
@@ -169,35 +186,40 @@ class Scene extends Component {
     this.createSky();
   };
   setupSkyLight = ({ x, y, z, distance }) => {
-    const { scene, colours, brightness, renderer } = this;
-    const dLight = new THREE.DirectionalLight(colours.sunlight, 2 * brightness);
-    //dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
-    dLight.castShadow = true;
-    dLight.shadow.bias = 0.000008;
-    dLight.shadow.camera.zoom = 1;
-    dLight.shadow.camera.right = 40 * this.scl;
-    dLight.shadow.camera.left = -40 * this.scl;
-    dLight.shadow.camera.top = 40 * this.scl;
-    dLight.shadow.camera.bottom = -40 * this.scl;
-    dLight.shadow.camera.far = distance * 2 * this.scl;
-    const maxTS = renderer.capabilities.maxTextureSize;
-    if (maxTS >= 4096) {
-      dLight.shadow.mapSize.width = 4096;
-      dLight.shadow.mapSize.height = 4096;
-    } else if (maxTS >= 2048) {
-      dLight.shadow.mapSize.width = 2048;
-      dLight.shadow.mapSize.height = 2048;
-    } else if (maxTS >= 1024) {
-      dLight.shadow.mapSize.width = 1024;
-      dLight.shadow.mapSize.height = 1024;
-    }
+    if (settings.load.lights) {
+      const { scene, colours, brightness, renderer } = this;
+      const dLight = new THREE.DirectionalLight(
+        colours.sunlight,
+        2 * brightness
+      );
+      //dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
+      dLight.castShadow = true;
+      dLight.shadow.bias = 0.000008;
+      dLight.shadow.camera.zoom = 1;
+      dLight.shadow.camera.right = 40 * this.scl;
+      dLight.shadow.camera.left = -40 * this.scl;
+      dLight.shadow.camera.top = 40 * this.scl;
+      dLight.shadow.camera.bottom = -40 * this.scl;
+      dLight.shadow.camera.far = distance * 2 * this.scl;
+      const maxTS = renderer.capabilities.maxTextureSize;
+      if (maxTS >= 4096) {
+        dLight.shadow.mapSize.width = 4096;
+        dLight.shadow.mapSize.height = 4096;
+      } else if (maxTS >= 2048) {
+        dLight.shadow.mapSize.width = 2048;
+        dLight.shadow.mapSize.height = 2048;
+      } else if (maxTS >= 1024) {
+        dLight.shadow.mapSize.width = 1024;
+        dLight.shadow.mapSize.height = 1024;
+      }
 
-    const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
-    this.dLightHelper = dLightHelper;
-    scene.add(dLightHelper);
-    scene.add(dLight);
-    scene.add(dLight.target);
-    this.dLight = dLight;
+      const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
+      this.dLightHelper = dLightHelper;
+      scene.add(dLightHelper);
+      scene.add(dLight);
+      scene.add(dLight.target);
+      this.dLight = dLight;
+    }
   };
   createGround = () => {
     const { scene, colours } = this;
@@ -308,18 +330,18 @@ class Scene extends Component {
     cancelAnimationFrame(this.frameId);
   };
   frame = 0;
-  aziA = -0.01;
+  aziA = -0.25;
   frameAzi = 0;
   aziAFrames = 60 * 60; //1 min
   t0 = 0;
   lastMs = 0;
   daynight = {
-    minutes: 3,
+    minutes: 0.25,
   };
   aziHeight = 0;
   animate = ms => {
     ms = Math.round(ms / 10);
-    const enableCamShowcase = false;
+    const enableCamShowcase = settings.enableCameraShowcase;
     const cam = this.camera;
     const o = this.o;
     if (
@@ -425,14 +447,21 @@ class Scene extends Component {
         azimuth: azi,
         mieDirectionalG: mieDG,
         rayleigh,
+        u_time: ms,
+        u_resolution: {
+          ...this.skySettings.u_resolution,
+          value: new THREE.Vector2(window.innerWidth, window.innerHeight),
+        },
       });
 
       //update ambient light based on aziHeight
       this.brightness = 1 - this.aziHeight ** 4;
 
       this.frameAzi++;
-      this.dLight.shadow.camera.updateProjectionMatrix();
-      this.dLightHelper.update();
+      if (this.dLight && this.dLightHelper) {
+        this.dLight.shadow.camera.updateProjectionMatrix();
+        this.dLightHelper.update();
+      }
       // this.camera.updateProjectionMatrix();
     }
     // const translateCamera = () => {
@@ -511,7 +540,6 @@ class Scene extends Component {
       /* set shadow size based on camera y position */
       const cy = Math.min(10, Math.max(0.66, camera.position.y / 20));
       const cz = Math.max(0.33, distCamToShadow / rayDistance);
-      console.log('zy', cz * cy);
       dLight.shadow.camera.right = 80 * this.scl * cy * cz;
       dLight.shadow.camera.left = -80 * this.scl * cy * cz;
       dLight.shadow.camera.top = 60 * this.scl * cy * cz;
@@ -520,10 +548,12 @@ class Scene extends Component {
     };
     //translateCamera();
     //if (this.mouseDownType === this.MOUSE.left) {
-    translateShadow();
+    if (settings.load.lights) {
+      translateShadow();
 
-    if (this.brightness > 0) {
-      this.updateAmbientLightBrightness(this.brightness);
+      if (this.brightness > 0) {
+        this.updateAmbientLightBrightness(this.brightness);
+      }
     }
     //}
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
