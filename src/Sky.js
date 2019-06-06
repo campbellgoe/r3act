@@ -174,8 +174,19 @@ Sky.SkyShader = {
 
     uniform vec2 u_resolution;
     uniform float u_time;
-    float random (vec2 st) {
-      return sin(dot(st.xy,vec2(pi*2.0,pi*2.0)))*0.5+0.5;
+    float random (vec2 st, float mag) {
+      float magpie = (mag*pi*2.0);
+      float x = cos(st.x/st.y+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(cos((u_time+633.3)/533.3)*10.0+15.0));
+      float y = sin(st.y/st.x+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(sin((u_time+333.3)/333.3)*30.0+25.0));
+     // float y = (u_time/500.0)+(sin(u_time/1000.0)*magpie+(magpie*2.0));
+      //float x = ceil(magpie*cos(u_time/120.0));
+      // float x = ceil(magpie*sin(u_time/120.0))*10.0;
+      // float y = ceil(magpie*cos(u_time/120.0))*10.0;
+      return sin(dot(st.xy,
+        vec2(
+          x,
+          y
+        )))*0.5+0.5;
       // return fract(sin(dot(st.xy,
       //    vec2(12.9898,78.233)))*
       //    43758.5453123);
@@ -222,9 +233,10 @@ Sky.SkyShader = {
     	vec3 retColor = pow( color, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) );
      vec2 st = gl_FragCoord.xy;
 
-     float rnd = random( uv );
-
-     gl_FragColor = vec4(vec3(rnd),1.0);
+     float rndA = random( uv, 1.0 );
+     float rndB = random( uv, 3.0);
+     float rndC= random( uv, 6.0);
+     gl_FragColor = vec4(rndA,rndB,rndC,1.0);
     //	gl_FragColor = vec4( retColor, 1.0 );
     //gl_FragColor = vec4(abs(sin(u_time/80.0)),0.0,0.0,1.0);
 
