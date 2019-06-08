@@ -344,13 +344,14 @@ class Scene extends Component {
     const enableCamShowcase = settings.enableCameraShowcase;
     const cam = this.camera;
     const o = this.o;
+    this.cameraControls.update();
     if (
       this.orientationControls &&
       this.orientationControls.deviceOrientation.type === 'deviceorientation'
     ) {
       this.orientationControls.update();
     }
-    this.cameraControls.update();
+
     //const cube = this.cube;
     if (enableCamShowcase) {
       // cube.rotation.x += 0.01;

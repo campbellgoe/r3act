@@ -175,13 +175,36 @@ Sky.SkyShader = {
     uniform vec2 u_resolution;
     uniform float u_time;
     float random (vec2 st, float mag) {
-      float magpie = (mag*pi*2.0);
-      float x = cos(st.x/st.y+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(cos((u_time+633.3)/533.3)*10.0+15.0));
-      float y = sin(st.y/st.x+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(sin((u_time+333.3)/333.3)*30.0+25.0));
+      float pi2 = pi*2.0;
+      float magpie = (mag*pi2);
+      // float x = cos(st.x/st.y+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(cos((u_time+633.3)/533.3)*10.0+15.0));
+      // float y = sin(st.y/st.x+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(sin((u_time+333.3)/333.3)*30.0+25.0));
      // float y = (u_time/500.0)+(sin(u_time/1000.0)*magpie+(magpie*2.0));
       //float x = ceil(magpie*cos(u_time/120.0));
       // float x = ceil(magpie*sin(u_time/120.0))*10.0;
       // float y = ceil(magpie*cos(u_time/120.0))*10.0;
+      //float x = magpie*(pow(cos(u_time/300.0),2.0)+10.0);
+      //float y = magpie+u_time/5.0;
+      float x = pi*2.0;
+      float y = pi*2.0;
+      float total = 200.0;
+      float amp = 2.0;
+      //red
+      if(mag == 1.0){
+        x *= 5.0;
+        y = sin(u_time/total+((mag/3.0)*total))*pi2*2.0*amp;
+      }
+      //green
+      
+      if(mag == 2.0){
+        x *= 3.0;
+        y = sin(u_time/total+((mag/3.0)*total))*pi2*2.0*amp;
+      }
+      //blue
+      if(mag == 3.0){
+        x *= 2.0;
+        y = sin(u_time/total+((mag/3.0)*total))*pi2*2.0*amp;
+      }
       return sin(dot(st.xy,
         vec2(
           x,
@@ -234,10 +257,10 @@ Sky.SkyShader = {
      vec2 st = gl_FragCoord.xy;
 
      float rndA = random( uv, 1.0 );
-     float rndB = random( uv, 3.0);
-     float rndC= random( uv, 6.0);
-     gl_FragColor = vec4(rndA,rndB,rndC,1.0);
-    //	gl_FragColor = vec4( retColor, 1.0 );
+     float rndB = random( uv, 2.0);
+     float rndC= random( uv, 3.0);
+    // gl_FragColor = vec4(rndA,rndB,rndC,1.0);
+    	gl_FragColor = vec4( retColor, 1.0 );
     //gl_FragColor = vec4(abs(sin(u_time/80.0)),0.0,0.0,1.0);
 
     }`,
