@@ -161,12 +161,12 @@ class Scene extends Component {
       }
     }, 1000 / 16);
   };
-  updateAmbientLightBrightness = brightness => {
-    this.aLight.intensity = 0.3 * brightness;
-    this.hLight.intensity = 0.4 * brightness;
+  updateAmbientLightBrightness = (directBrightness, ambientBrightness) => {
+    this.aLight.intensity = 0.3 * ambientBrightness;
+    this.hLight.intensity = 0.4 * ambientBrightness;
     for (let lightName in this.dLights) {
       const dLight = this.dLights[lightName];
-      dLight.intensity = dLight.userData.intensity * brightness;
+      dLight.intensity = dLight.userData.intensity * directBrightness;
     }
   };
   createAndSetupSky = () => {
@@ -180,7 +180,7 @@ class Scene extends Component {
     const hLight = new THREE.HemisphereLight(colours.sky, colours.groundLight);
     scene.add(hLight);
     this.hLight = hLight;
-    this.updateAmbientLightBrightness(brightness);
+    this.updateAmbientLightBrightness(brightness, brightness);
     // this.ambientLight = aLight;
     // this.hemiLight = hLight;
 
@@ -230,14 +230,19 @@ class Scene extends Component {
         };
       };
       const dLights = {
-        middle: createLightData({
-          x: 0,
-          y: 0,
-          left: -5,
-          right: 5,
-          bottom: -5,
-          top: 5,
-        }),
+        middle: createLightData(
+          {
+            x: 0,
+            y: 0,
+            left: -5,
+            right: 5,
+            bottom: -5,
+            top: 5,
+          },
+          {
+            intensity: 5,
+          }
+        ),
         left: createLightData(
           {
             x: -1,
@@ -458,11 +463,10 @@ class Scene extends Component {
   frame = 0;
   //azimuth angle starting value
   //<0.0 and 0.5> means sun below horizon, 0.25 means sun at peak height in sky.
-  aziA = -0.04;
-  aziAFrames = 60 * 60; //1 min
+  aziA = 0.1;
   t0 = 0;
   daynight = {
-    minutes: 15,
+    minutes: 5,
   };
   aziHeight = 0;
   translateShadow = () => {
@@ -503,7 +507,10 @@ class Scene extends Component {
         if (!dLight.visible) dLight.visible = true;
       } else {
         dLight.visible = false;
-        this.brightness = 0.0001;
+        if (this.ambiBrightness < 0) {
+          this.brightness = 0.00001;
+          this.ambiBrightness = 0.00001;
+        }
       }
 
       /* set shadow size based on camera y position */
@@ -640,7 +647,7 @@ class Scene extends Component {
       this.helper.update();
     }
     if (
-      this.frame % 5 === 0 &&
+      this.frame % 8 === 0 &&
       settings.load.lights &&
       this.sky &&
       this.sunSphere
@@ -684,11 +691,20 @@ class Scene extends Component {
       });
 
       //update ambient light based on aziHeight
-      this.brightness = 1 - this.aziHeight ** 4;
+
+      this.aziBrightness = 1 - this.aziHeight ** 4;
+      let threshold = 0.07;
+      this.ambiBrightness =
+        azi > 0.5 + threshold && azi < 1 - threshold
+          ? 0
+          : (1 - Math.abs(0.5 - ((azi + threshold) % 1) / 0.65) - 0.5) * 2;
+      //Math.abs((azi % 0.5) - 0.25) * 4;
+      if (this.frame % 2 === 0) console.log(this.ambiBrightness);
+      this.brightness = this.aziBrightness;
       //console.log('azih', this.aziHeight ** 4);
 
       // this.camera.updateProjectionMatrix();
-
+      //-1.4, 0.6
       // const translateCamera = () => {
       //   const xd = this.rx - 0.5;
       //   o.x += xd;
@@ -700,8 +716,8 @@ class Scene extends Component {
       //if (this.mouseDownType === this.MOUSE.left) {
 
       this.translateShadow();
-      if (this.brightness > 0) {
-        this.updateAmbientLightBrightness(this.brightness);
+      if (this.brightness > 0 || this.ambiBrightness > 0) {
+        this.updateAmbientLightBrightness(this.brightness, this.ambiBrightness);
       }
     }
     this.renderScene();
