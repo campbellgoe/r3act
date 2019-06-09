@@ -154,6 +154,12 @@ class Scene extends Component {
     //this.createAndSetupFog();
 
     this.loadAndSetupModels();
+    setInterval(() => {
+      if (typeof this.aziA == 'number') {
+        //console.log('elapsed', Date.now() - t0);
+        this.aziA += 1 / 3 / (60 * this.daynight.minutes); //e.g. 8 minutes for 1 day and night
+      }
+    }, 1000 / 3);
   };
   updateAmbientLightBrightness = brightness => {
     this.aLight.intensity = 0.2 * brightness;
@@ -315,6 +321,12 @@ class Scene extends Component {
 
           dLight.userData = {
             offset,
+            frustrum: {
+              left,
+              right,
+              bottom,
+              top,
+            },
           };
           scene.add(dLight);
           scene.add(dLight.target);
@@ -418,7 +430,6 @@ class Scene extends Component {
         this.orientationControls = controls;
       });
     }
-
     this.mount.appendChild(this.renderer.domElement);
     this.start();
   }
@@ -438,15 +449,81 @@ class Scene extends Component {
     cancelAnimationFrame(this.frameId);
   };
   frame = 0;
-  aziA = -0.01;
-  frameAzi = 0;
+  aziA = 0.01;
   aziAFrames = 60 * 60; //1 min
   t0 = 0;
-  lastMs = 0;
   daynight = {
-    minutes: 3,
+    minutes: 60,
   };
   aziHeight = 0;
+  translateShadow = () => {
+    const camera = this.camera;
+    for (let lightName in this.dLights) {
+      const dLight = this.dLights[lightName];
+      //const offset = dLight.userData.offset;
+      const raycaster = new THREE.Raycaster();
+      const center = new THREE.Vector2();
+
+      center.x = 0; //rx * 2 - 1;
+      center.y = 0; //ry * 2 - 1;
+      const shadowSize = 80;
+      const rayDistanceActual = shadowSize + 40;
+      const rayDistance = Math.max(rayDistanceActual, camera.position.y);
+      raycaster.setFromCamera(center, this.camera);
+      let resultPosition = new THREE.Vector3();
+      let ray = raycaster.ray;
+      ray.at(rayDistance, resultPosition);
+      resultPosition.y = 0;
+
+      let distXYCamToShadow = distance(
+        {
+          x: resultPosition.x,
+          y: resultPosition.z,
+        },
+        {
+          x: camera.position.x,
+          y: camera.position.z,
+        }
+      );
+      let distCamToShadow = resultPosition.distanceTo(camera.position);
+      if (resultPosition) {
+        //enable sunlight when it is above the horizon, disable it below
+        if (this.sun.y > -1 * this.scl) {
+          if (!dLight.visible) dLight.visible = true;
+        } else {
+          dLight.visible = false;
+          this.brightness = 0.0001;
+        }
+        //translate sunlight shadow cast to where the camera is pointed
+        dLight.target.position.copy(resultPosition);
+        dLight.position.set(
+          this.sun.x * this.scl + resultPosition.x,
+          this.sun.y * this.scl + resultPosition.y,
+          this.sun.z * this.scl + resultPosition.z
+        );
+        //cam view intersects with ground plane at groundPoint
+        //add groundPoint x,y,z to the directional light position and target point.
+      }
+      /* set shadow size based on camera y position */
+      const cy = 1; //Math.min(10, Math.max(0.5, camera.position.y / 20));
+      const cz = Math.max(0.5, distXYCamToShadow / rayDistance + 0.5);
+      //set shadow size based on dist to shadow center
+      const cw = Math.max(0.33, distCamToShadow / (rayDistanceActual / 2));
+      const c = Math.min(10, cy * cz * cw);
+      //if (this.frame % 10 === 0) console.table([['xyd', cz], ['xyzd', cw]]);
+
+      dLight.shadow.camera.right = shadowSize * this.scl * c;
+      dLight.shadow.camera.left = -shadowSize * this.scl * c;
+      dLight.shadow.camera.top = shadowSize * this.scl * c;
+      dLight.shadow.camera.bottom = -shadowSize * this.scl * c;
+      dLight.shadow.camera.updateProjectionMatrix();
+      //dLight.shadow.camera.updateProjectionMatrix();
+      if (settings.shadowHelper) {
+        const dLightHelper = this.dLightHelpers[lightName];
+        dLightHelper.update();
+      }
+    }
+  };
   animate = ms => {
     ms = Math.round(ms / 10);
     const enableCamShowcase = false;
@@ -474,21 +551,13 @@ class Scene extends Component {
       //cam.lookAt(point);
       this.helper.update();
     }
-    if (settings.load.lights && this.sky && this.sunSphere) {
-      if (this.frameAzi === 0) {
-        let t0 = Date.now();
-        setInterval(() => {
-          //console.log('elapsed', Date.now() - t0);
-          this.aziA += 1 / 16 / (60 * this.daynight.minutes); //8 minutes for 1 day and night
-        }, 1000 / 16);
-      }
-
-      if (this.frameAzi % 100 === 0) {
-        // console.log(ms, (ms / 100) % 100);
-        // this.aziA += 1 / 10000;
-      }
+    if (
+      this.frame % 10 === 0 &&
+      settings.load.lights &&
+      this.sky &&
+      this.sunSphere
+    ) {
       //console.log(this.aziA);
-      this.lastMs = ms;
       let azi = this.aziA % 1;
       //between 0 and 1, where 1 is highest in the sky, and 0 is the horizon.
       this.aziHeight = Math.abs((azi % 0.5) - 0.25) * 4;
@@ -528,8 +597,7 @@ class Scene extends Component {
 
       //update ambient light based on aziHeight
       this.brightness = 1 - this.aziHeight ** 4;
-
-      this.frameAzi++;
+      console.log('azih', this.aziHeight ** 4);
 
       // this.camera.updateProjectionMatrix();
 
@@ -539,88 +607,21 @@ class Scene extends Component {
       //   cam.position.x += xd;
       // };
       //TODO: refactor this out of animate function
-      const translateShadow = () => {
-        const camera = this.camera;
-        for (let lightName in this.dLights) {
-          const dLight = this.dLights[lightName];
-          const offset = dLight.userData.offset;
-          console.log('OFFSET', lightName, offset);
-          const raycaster = new THREE.Raycaster();
-          const center = new THREE.Vector2();
 
-          center.x = 0; //rx * 2 - 1;
-          center.y = 0; //ry * 2 - 1;
-          const shadowSize = 5;
-          const rayDistanceActual = shadowSize + 20;
-          const rayDistance = Math.max(rayDistanceActual, camera.position.y);
-          raycaster.setFromCamera(center, cam);
-          let resultPosition = new THREE.Vector3();
-          let ray = raycaster.ray;
-          ray.at(rayDistance, resultPosition);
-          resultPosition.y = 0;
-
-          let distXYCamToShadow = distance(
-            {
-              x: resultPosition.x,
-              y: resultPosition.z,
-            },
-            {
-              x: camera.position.x,
-              y: camera.position.z,
-            }
-          );
-          let distCamToShadow = resultPosition.distanceTo(camera.position);
-          if (resultPosition) {
-            //enable sunlight when it is above the horizon, disable it below
-            if (this.sun.y > -1 * this.scl) {
-              if (!dLight.visible) dLight.visible = true;
-            } else {
-              dLight.visible = false;
-              this.brightness = 0.0001;
-            }
-            //translate sunlight shadow cast to where the camera is pointed
-            dLight.target.position.copy(resultPosition);
-            dLight.position.set(
-              this.sun.x * this.scl + resultPosition.x,
-              this.sun.y * this.scl + resultPosition.y,
-              this.sun.z * this.scl + resultPosition.z
-            );
-            //cam view intersects with ground plane at groundPoint
-            //add groundPoint x,y,z to the directional light position and target point.
-          }
-          /* set shadow size based on camera y position */
-          const cy = 1; //Math.min(10, Math.max(0.5, camera.position.y / 20));
-          const cz = Math.max(0.5, distXYCamToShadow / rayDistance + 0.5);
-          //set shadow size based on dist to shadow center
-          const cw = Math.max(0.33, distCamToShadow / (rayDistanceActual / 2));
-          const c = 1; //Math.min(10, cy * cz * cw);
-          //if (this.frame % 10 === 0) console.table([['xyd', cz], ['xyzd', cw]]);
-
-          dLight.shadow.camera.right = shadowSize * this.scl * c;
-          dLight.shadow.camera.left = -shadowSize * this.scl * c;
-          dLight.shadow.camera.top = shadowSize * this.scl * c;
-          dLight.shadow.camera.bottom = -shadowSize * this.scl * c;
-          //dLight.shadow.camera.updateProjectionMatrix();
-          dLight.shadow.camera.updateProjectionMatrix();
-          if (settings.shadowHelper) {
-            const dLightHelper = this.dLightHelpers[lightName];
-            dLightHelper.update();
-          }
-        }
-      };
       //translateCamera();
       //if (this.mouseDownType === this.MOUSE.left) {
-      translateShadow();
+
+      this.translateShadow();
       if (this.brightness > 0) {
         this.updateAmbientLightBrightness(this.brightness);
       }
+      this.renderScene();
     }
     //}
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
     //this.dLight.position.set(-x * 10, y * 10, -z * 10);
     //this.dLight.shadow.camera.updateProjectionMatrix();
 
-    this.renderScene();
     this.frameId = window.requestAnimationFrame(this.animate);
     this.frame++;
   };
