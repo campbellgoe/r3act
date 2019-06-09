@@ -240,63 +240,7 @@ class Scene extends Component {
             top: 5,
           },
           {
-            intensity: 5,
-          }
-        ),
-        left: createLightData(
-          {
-            x: -1,
-            y: 0,
-            left: -5,
-            right: 5,
-            bottom: -15,
-            top: 15,
-          },
-          {
-            mapSize: maxTS / 2,
-            intensity: 0,
-          }
-        ),
-        right: createLightData(
-          {
-            x: 1,
-            y: 0,
-            left: -5,
-            right: 5,
-            bottom: -15,
-            top: 15,
-          },
-          {
-            mapSize: maxTS / 2,
-            intensity: 0,
-          }
-        ),
-        bottom: createLightData(
-          {
-            x: 0,
-            y: 1,
-            left: -5,
-            right: 5,
-            bottom: -5,
-            top: 5,
-          },
-          {
-            mapSize: maxTS / 2,
-            intensity: 0,
-          }
-        ),
-        top: createLightData(
-          {
-            x: 0,
-            y: -1,
-            left: -5,
-            right: 5,
-            bottom: -5,
-            top: 5,
-          },
-          {
-            mapSize: maxTS / 2,
-            intensity: 0,
+            intensity: 4,
           }
         ),
       };
@@ -476,7 +420,7 @@ class Scene extends Component {
 
     center.x = 0; //rx * 2 - 1;
     center.y = 0; //ry * 2 - 1;
-    const shadowSize = 10;
+    const shadowSize = 30;
     const rayDistanceActual = shadowSize;
     const rayDistance = Math.max(rayDistanceActual, camera.position.y);
     raycaster.setFromCamera(center, this.camera);
@@ -514,11 +458,11 @@ class Scene extends Component {
       }
 
       /* set shadow size based on camera y position */
-      const cy = 8; //Math.min(10, Math.max(0.5, camera.position.y / 20));
+      const cy = 30; //Math.min(10, Math.max(0.5, camera.position.y / 20));
       const cz = Math.max(1, distXYCamToShadow / rayDistance + 0.5);
       //set shadow size based on dist to shadow center
       const cw = Math.max(1, distCamToShadow / (rayDistanceActual / 2));
-      const c = Math.min(100 * this.scl, cy * cz * cw * this.scl);
+      const c = Math.min(1000 * this.scl, cy * cz * cw * this.scl);
       const cl = 4;
       const cr = 4;
       const ct = 4;
