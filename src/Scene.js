@@ -449,7 +449,7 @@ class Scene extends Component {
     cancelAnimationFrame(this.frameId);
   };
   frame = 0;
-  aziA = 0.01;
+  aziA = 0.05;
   aziAFrames = 60 * 60; //1 min
   t0 = 0;
   daynight = {
@@ -466,7 +466,7 @@ class Scene extends Component {
 
       center.x = 0; //rx * 2 - 1;
       center.y = 0; //ry * 2 - 1;
-      const shadowSize = 80;
+      const shadowSize = 65;
       const rayDistanceActual = shadowSize + 40;
       const rayDistance = Math.max(rayDistanceActual, camera.position.y);
       raycaster.setFromCamera(center, this.camera);
@@ -506,10 +506,11 @@ class Scene extends Component {
       }
       /* set shadow size based on camera y position */
       const cy = 1; //Math.min(10, Math.max(0.5, camera.position.y / 20));
-      const cz = Math.max(0.5, distXYCamToShadow / rayDistance + 0.5);
+      const cz = Math.max(1, distXYCamToShadow / rayDistance + 0.5);
       //set shadow size based on dist to shadow center
-      const cw = Math.max(0.33, distCamToShadow / (rayDistanceActual / 2));
+      const cw = Math.max(1, distCamToShadow / (rayDistanceActual / 2));
       const c = Math.min(10, cy * cz * cw);
+      console.log('cz', cz);
       //if (this.frame % 10 === 0) console.table([['xyd', cz], ['xyzd', cw]]);
 
       dLight.shadow.camera.right = shadowSize * this.scl * c;
@@ -597,7 +598,7 @@ class Scene extends Component {
 
       //update ambient light based on aziHeight
       this.brightness = 1 - this.aziHeight ** 4;
-      console.log('azih', this.aziHeight ** 4);
+      //console.log('azih', this.aziHeight ** 4);
 
       // this.camera.updateProjectionMatrix();
 
@@ -615,8 +616,8 @@ class Scene extends Component {
       if (this.brightness > 0) {
         this.updateAmbientLightBrightness(this.brightness);
       }
-      this.renderScene();
     }
+    this.renderScene();
     //}
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
     //this.dLight.position.set(-x * 10, y * 10, -z * 10);
