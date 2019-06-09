@@ -18,6 +18,15 @@ const importDeviceOrientationControls = () => {
     }
   );
 };
+const settings = {
+  enableCameraShowcase: false,
+  load: {
+    models: true,
+    lights: true,
+    ground: true,
+  },
+  shadowHelper: true,
+};
 //import treeFBX from './models/tree-1-fbx/trees1.fbx';
 
 class Scene extends Component {
@@ -149,6 +158,10 @@ class Scene extends Component {
   updateAmbientLightBrightness = brightness => {
     this.aLight.intensity = 0.2 * brightness;
     this.hLight.intensity = 0.5 * brightness;
+    for (let lightName in this.dLights) {
+      const dLight = this.dLights[lightName];
+      dLight.intensity = 2.5 * brightness;
+    }
   };
   createAndSetupSky = () => {
     const { scene, renderer, colours, brightness } = this;
@@ -169,35 +182,152 @@ class Scene extends Component {
     this.createSky();
   };
   setupSkyLight = ({ x, y, z, distance }) => {
-    const { scene, colours, brightness, renderer } = this;
-    const dLight = new THREE.DirectionalLight(colours.sunlight, 2 * brightness);
-    //dLight.position.set(400 * this.scl, 1000 * this.scl, 600 * this.scl);
-    dLight.castShadow = true;
-    dLight.shadow.bias = 0.000008;
-    dLight.shadow.camera.zoom = 1;
-    dLight.shadow.camera.right = 40 * this.scl;
-    dLight.shadow.camera.left = -40 * this.scl;
-    dLight.shadow.camera.top = 40 * this.scl;
-    dLight.shadow.camera.bottom = -40 * this.scl;
-    dLight.shadow.camera.far = distance * 2 * this.scl;
-    const maxTS = renderer.capabilities.maxTextureSize;
-    if (maxTS >= 4096) {
-      dLight.shadow.mapSize.width = 4096;
-      dLight.shadow.mapSize.height = 4096;
-    } else if (maxTS >= 2048) {
-      dLight.shadow.mapSize.width = 2048;
-      dLight.shadow.mapSize.height = 2048;
-    } else if (maxTS >= 1024) {
-      dLight.shadow.mapSize.width = 1024;
-      dLight.shadow.mapSize.height = 1024;
-    }
+    if (settings.load.lights) {
+      const { scene, colours, brightness, renderer } = this;
+      let maxTS = renderer.capabilities.maxTextureSize;
+      if (maxTS >= 4096) {
+        maxTS = 4096;
+      } else if (maxTS >= 2048) {
+        maxTS = 2048;
+      } else if (maxTS >= 1024) {
+        maxTS = 1024;
+      } else if (maxTS >= 512) {
+        maxTS = 512;
+      }
+      const dLightSettings = {
+        colour: colours.sunlight,
+        intensity: 2 * brightness,
+        bias: 0.000008,
+        far: distance * 2 * this.scl,
+        castShadow: true,
+        mapSize: maxTS,
+      };
+      const createLightData = (
+        { x, y, left, right, bottom, top },
+        customData = {}
+      ) => {
+        return {
+          ...dLightSettings,
+          ...{
+            offset: {
+              x,
+              y,
+            },
+            frustrum: {
+              left,
+              right,
+              bottom,
+              top,
+            },
+          },
+          ...customData,
+        };
+      };
+      const dLights = {
+        middle: createLightData({
+          x: 0,
+          y: 0,
+          left: -5,
+          right: 5,
+          bottom: -5,
+          top: 5,
+        }),
+        /*left: createLightData(
+          {
+            x: -1,
+            y: 0,
+            left: -5,
+            right: 5,
+            bottom: -15,
+            top: 15,
+          },
+          {
+            mapSize: maxTS / 2,
+          }
+        ),
+        right: createLightData(
+          {
+            x: 1,
+            y: 0,
+            left: -5,
+            right: 5,
+            bottom: -15,
+            top: 15,
+          },
+          {
+            mapSize: maxTS / 2,
+          }
+        ),
+        bottom: createLightData(
+          {
+            x: 0,
+            y: 1,
+            left: -5,
+            right: 5,
+            bottom: -5,
+            top: 5,
+          },
+          {
+            mapSize: maxTS / 2,
+          }
+        ),
+        top: createLightData(
+          {
+            x: 0,
+            y: -1,
+            left: -5,
+            right: 5,
+            bottom: -5,
+            top: 5,
+          },
+          {
+            mapSize: maxTS / 2,
+          }
+        ),*/
+      };
+      const createDLights = dLights => {
+        this.dLights = {};
+        this.dLightHelpers = {};
+        for (let lightName in dLights) {
+          const {
+            colour,
+            intensity,
+            bias,
+            far,
+            castShadow,
+            mapSize,
+            offset,
+            frustrum: { left, right, bottom, top },
+          } = dLights[lightName];
+          console.log('creating', lightName, 'directional light.');
+          const dLight = new THREE.DirectionalLight(colour, intensity);
+          dLight.castShadow = castShadow;
+          dLight.shadow.bias = bias;
 
-    const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
-    this.dLightHelper = dLightHelper;
-    scene.add(dLightHelper);
-    scene.add(dLight);
-    scene.add(dLight.target);
-    this.dLight = dLight;
+          dLight.shadow.mapSize.width = mapSize;
+          dLight.shadow.mapSize.height = mapSize;
+
+          dLight.shadow.camera.far = far;
+          dLight.shadow.camera.left = left;
+          dLight.shadow.camera.right = right;
+          dLight.shadow.camera.bottom = bottom;
+          dLight.shadow.camera.top = top;
+
+          dLight.userData = {
+            offset,
+          };
+          scene.add(dLight);
+          scene.add(dLight.target);
+          this.dLights[lightName] = dLight;
+          if (settings.shadowHelper) {
+            const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
+            scene.add(dLightHelper);
+            this.dLightHelpers[lightName] = dLightHelper;
+          }
+        }
+      };
+      createDLights(dLights);
+    }
   };
   createGround = () => {
     const { scene, colours } = this;
@@ -344,38 +474,7 @@ class Scene extends Component {
       //cam.lookAt(point);
       this.helper.update();
     }
-    if (this.sky && this.sunSphere) {
-      //the closer to 0 and 0.5, the slower the rate of change should be..
-      // let divider = 2000;
-      //let angle = ((this.frame / divider) * Math.PI) % 1;
-      //let azi;
-      // if (angle > Math.PI) {
-      //   azi = -(Math.cos(angle) * 0.25 + 0.25);
-      // } else {
-      //   azi = Math.cos(angle) * 0.25 + 0.25;
-      // }
-      //azi = angle;
-      //let sazi = Math.sin(angle) * 0.5;
-      //console.log(angle);
-      //if (angle > 1 - 0.1) {
-      //azi = (1 - sazi);
-      //azi = 0.99238;
-      //let sazi = Math.sin(this.frame / (divider * 0.1)) * 0.1 + 0.05;
-      //console.log(sazi);
-      // this.subangle += (Math.PI/2)/60;//60 frames
-      //} else {
-      //  this.subangle = 0;
-      //}
-
-      // var frameId;
-      // var angle = 0;
-      // var loop = (ms) => {
-      //   console.log(1-(Math.cos(angle)*0.00762));
-      //   angle += (Math.PI/2)/60;//60 frames
-
-      //   frameId = requestAnimationFrame(loop);
-      // }
-
+    if (settings.load.lights && this.sky && this.sunSphere) {
       if (this.frameAzi === 0) {
         let t0 = Date.now();
         setInterval(() => {
@@ -431,99 +530,90 @@ class Scene extends Component {
       this.brightness = 1 - this.aziHeight ** 4;
 
       this.frameAzi++;
-      this.dLight.shadow.camera.updateProjectionMatrix();
-      this.dLightHelper.update();
+
       // this.camera.updateProjectionMatrix();
-    }
-    // const translateCamera = () => {
-    //   const xd = this.rx - 0.5;
-    //   o.x += xd;
-    //   cam.position.x += xd;
-    // };
-    const translateShadow = () => {
-      const camera = this.camera;
-      const dLight = this.dLight;
-      if (!dLight) return;
-      const raycaster = new THREE.Raycaster();
-      const center = new THREE.Vector2();
 
-      center.x = 0; //rx * 2 - 1;
-      center.y = 0; //ry * 2 - 1;
-      const rayDistance = Math.max(100, camera.position.y);
-      raycaster.setFromCamera(center, cam);
-      let resultPosition = new THREE.Vector3();
-      let ray = raycaster.ray;
-      ray.at(rayDistance, resultPosition);
-      resultPosition.y = 0;
-      // calculate objects intersecting the picking ray
-      // const intersects = raycaster.intersectObject(this.plane.entity);
-      // let groundPoint;
-      // let intersection;
-      // if (intersects.length > 1) {
-      //   console.warn('how can intersects a flat plane be > 1?', intersects);
-      //   //throw new Error('how can intersects be > 1?');
-      // }
-      // if (Array.isArray(intersects) && intersects.length > 0) {
-      //   intersection = intersects[0];
-      // }
-      // if (intersection) {
-      //   groundPoint = intersection.point;
-      // }
-      // if (!groundPoint) {
-      //   groundPoint = new THREE.Vector3(this.camera.position);
-      // }
-      // if (
-      //   !intersection ||
-      //   intersection.length === 0 ||
-      //   groundPoint.distanceTo(this.camera.position) > 100
-      // ) {
-      //   groundPoint.copy(this.camera.position);
-      // }
+      // const translateCamera = () => {
+      //   const xd = this.rx - 0.5;
+      //   o.x += xd;
+      //   cam.position.x += xd;
+      // };
+      //TODO: refactor this out of animate function
+      const translateShadow = () => {
+        const camera = this.camera;
+        for (let lightName in this.dLights) {
+          const dLight = this.dLights[lightName];
+          const offset = dLight.userData.offset;
+          console.log('OFFSET', lightName, offset);
+          const raycaster = new THREE.Raycaster();
+          const center = new THREE.Vector2();
 
-      let distCamToShadow = distance(
-        {
-          x: resultPosition.x,
-          y: resultPosition.z,
-        },
-        {
-          x: camera.position.x,
-          y: camera.position.z,
+          center.x = 0; //rx * 2 - 1;
+          center.y = 0; //ry * 2 - 1;
+          const shadowSize = 5;
+          const rayDistanceActual = shadowSize + 20;
+          const rayDistance = Math.max(rayDistanceActual, camera.position.y);
+          raycaster.setFromCamera(center, cam);
+          let resultPosition = new THREE.Vector3();
+          let ray = raycaster.ray;
+          ray.at(rayDistance, resultPosition);
+          resultPosition.y = 0;
+
+          let distXYCamToShadow = distance(
+            {
+              x: resultPosition.x,
+              y: resultPosition.z,
+            },
+            {
+              x: camera.position.x,
+              y: camera.position.z,
+            }
+          );
+          let distCamToShadow = resultPosition.distanceTo(camera.position);
+          if (resultPosition) {
+            //enable sunlight when it is above the horizon, disable it below
+            if (this.sun.y > -1 * this.scl) {
+              if (!dLight.visible) dLight.visible = true;
+            } else {
+              dLight.visible = false;
+              this.brightness = 0.0001;
+            }
+            //translate sunlight shadow cast to where the camera is pointed
+            dLight.target.position.copy(resultPosition);
+            dLight.position.set(
+              this.sun.x * this.scl + resultPosition.x,
+              this.sun.y * this.scl + resultPosition.y,
+              this.sun.z * this.scl + resultPosition.z
+            );
+            //cam view intersects with ground plane at groundPoint
+            //add groundPoint x,y,z to the directional light position and target point.
+          }
+          /* set shadow size based on camera y position */
+          const cy = 1; //Math.min(10, Math.max(0.5, camera.position.y / 20));
+          const cz = Math.max(0.5, distXYCamToShadow / rayDistance + 0.5);
+          //set shadow size based on dist to shadow center
+          const cw = Math.max(0.33, distCamToShadow / (rayDistanceActual / 2));
+          const c = 1; //Math.min(10, cy * cz * cw);
+          //if (this.frame % 10 === 0) console.table([['xyd', cz], ['xyzd', cw]]);
+
+          dLight.shadow.camera.right = shadowSize * this.scl * c;
+          dLight.shadow.camera.left = -shadowSize * this.scl * c;
+          dLight.shadow.camera.top = shadowSize * this.scl * c;
+          dLight.shadow.camera.bottom = -shadowSize * this.scl * c;
+          //dLight.shadow.camera.updateProjectionMatrix();
+          dLight.shadow.camera.updateProjectionMatrix();
+          if (settings.shadowHelper) {
+            const dLightHelper = this.dLightHelpers[lightName];
+            dLightHelper.update();
+          }
         }
-      );
-      if (resultPosition) {
-        //enable sunlight when it is above the horizon, disable it below
-        if (this.sun.y > -1 * this.scl) {
-          if (!dLight.visible) dLight.visible = true;
-        } else {
-          dLight.visible = false;
-          this.brightness = 0.0001;
-        }
-        //translate sunlight shadow cast to where the camera is pointed
-        dLight.target.position.copy(resultPosition);
-        dLight.position.set(
-          this.sun.x * this.scl + resultPosition.x,
-          this.sun.y * this.scl + resultPosition.y,
-          this.sun.z * this.scl + resultPosition.z
-        );
-        //cam view intersects with ground plane at groundPoint
-        //add groundPoint x,y,z to the directional light position and target point.
+      };
+      //translateCamera();
+      //if (this.mouseDownType === this.MOUSE.left) {
+      translateShadow();
+      if (this.brightness > 0) {
+        this.updateAmbientLightBrightness(this.brightness);
       }
-      /* set shadow size based on camera y position */
-      const cy = Math.min(10, Math.max(0.66, camera.position.y / 20));
-      const cz = Math.max(0.33, distCamToShadow / rayDistance);
-      console.log('zy', cz * cy);
-      dLight.shadow.camera.right = 80 * this.scl * cy * cz;
-      dLight.shadow.camera.left = -80 * this.scl * cy * cz;
-      dLight.shadow.camera.top = 60 * this.scl * cy * cz;
-      dLight.shadow.camera.bottom = -60 * this.scl * cy * cz;
-      //dLight.shadow.camera.updateProjectionMatrix();
-    };
-    //translateCamera();
-    //if (this.mouseDownType === this.MOUSE.left) {
-    translateShadow();
-
-    if (this.brightness > 0) {
-      this.updateAmbientLightBrightness(this.brightness);
     }
     //}
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
