@@ -321,19 +321,27 @@ class Scene extends Component {
   //   };
   //   this.scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
   // }
+  lods = [];
   loadAndSetupModels = () => {
     loadModels([{ type: 'gltf', model: treeGLTF }])
       .then(objOriginal => {
         objOriginal = objOriginal[0];
-        const objs = [objOriginal];
-        for (let i = 0; i < 1000; i++) {
-          const newObj = objOriginal.clone();
-          const rndInCircle = randomPositionInCircle(800);
-          newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
-          newObj.rotation.y = Math.random() * Math.PI * 2;
-          objs.push(newObj);
+        const objs = [];
+        const pushObj = obj => {
+          const newObj = obj || objOriginal.clone();
+          const rndInCircle = randomPositionInCircle(200);
+          //newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
+          //newObj.rotation.y = Math.random() * Math.PI * 2;
+          const yRot = Math.random() * Math.PI * 2;
+          objs.push({ obj: newObj, pos: rndInCircle, yRot });
+        };
+        pushObj(objOriginal);
+        for (let i = 0; i < 100; i++) {
+          //var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
+          //var mesh = new THREE.Mesh(geometry, obj.material);
+          pushObj();
         }
-        objs.forEach(obj => {
+        objs.forEach(({ obj, pos, yRot }) => {
           obj.scale.set(0.015 * this.scl, 0.015 * this.scl, 0.015 * this.scl);
           obj.castShadow = true;
           obj.receiveShadow = true;
@@ -361,7 +369,25 @@ class Scene extends Component {
               }
             }
           });
-          this.scene.add(obj);
+          var lod = new THREE.LOD();
+          //Create spheres with 3 levels of detail and create new LOD levels for them
+          //for (var i = 0; i < 3; i++) {
+          lod.addLevel(obj, 0);
+          var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
+
+          var mesh = new THREE.Mesh(
+            geometry,
+            new THREE.MeshBasicMaterial(0xff0000)
+          );
+          //mesh.position.copy(obj.position);
+          lod.addLevel(mesh, 80);
+          lod.position.set(pos.x, 0, pos.y);
+          lod.rotation.y = yRot;
+          //}
+          this.lods.push(lod);
+
+          this.scene.add(lod);
+          //this.scene.add(obj);
         });
       })
       .catch(err => {
@@ -664,6 +690,9 @@ class Scene extends Component {
         this.updateAmbientLightBrightness(this.brightness, this.ambiBrightness);
       }
     }
+    this.lods.forEach(lod => {
+      lod.update(this.camera);
+    });
     this.renderScene();
     //}
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
