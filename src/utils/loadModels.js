@@ -32,7 +32,7 @@ const loadModels = models => {
             loader.load(
               model,
               function(gltf) {
-                resolve(gltf.scene);
+                resolve(gltf.scene.children[0]);
               },
               undefined,
               function(error) {

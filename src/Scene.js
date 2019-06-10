@@ -18,6 +18,11 @@ const importDeviceOrientationControls = () => {
     }
   );
 };
+const importSimplifyModifier = () => {
+  return import('three/examples/js/modifiers/SimplifyModifier.js').then(() => {
+    return window.THREE.SimplifyModifier;
+  });
+};
 const settings = {
   enableCameraShowcase: false,
   load: {
@@ -323,76 +328,99 @@ class Scene extends Component {
   // }
   lods = [];
   loadAndSetupModels = () => {
-    loadModels([{ type: 'gltf', model: treeGLTF }])
-      .then(objOriginal => {
-        objOriginal = objOriginal[0];
-        const objs = [];
-        const pushObj = obj => {
-          const newObj = obj || objOriginal.clone();
-          const rndInCircle = randomPositionInCircle(200);
-          //newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
-          //newObj.rotation.y = Math.random() * Math.PI * 2;
-          const yRot = Math.random() * Math.PI * 2;
-          objs.push({ obj: newObj, pos: rndInCircle, yRot });
-        };
-        pushObj(objOriginal);
-        for (let i = 0; i < 100; i++) {
-          //var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
-          //var mesh = new THREE.Mesh(geometry, obj.material);
-          pushObj();
-        }
-        objs.forEach(({ obj, pos, yRot }) => {
-          obj.scale.set(0.015 * this.scl, 0.015 * this.scl, 0.015 * this.scl);
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-
-          obj.traverse(o => {
+    importSimplifyModifier().then(SimplifyModifier => {
+      loadModels([{ type: 'gltf', model: treeGLTF }])
+        .then(objOriginal => {
+          objOriginal = objOriginal[0];
+          console.log('obj', objOriginal);
+          //objOriginal = objOriginal[0];
+          const objs = [];
+          const simplify = (mesh, amount = 0.5) => {
+            var modifier = new SimplifyModifier();
+            var simplified = mesh.clone();
+            console.log('simplified', simplified);
+            simplified.material = mesh.material.clone();
+            simplified.material.flatShading = true;
+            var count = Math.floor(
+              simplified.geometry.attributes.position.count * amount
+            ); // number of vertices to remove
+            simplified.geometry = modifier.modify(simplified.geometry, count);
+            simplified.position.copy(mesh.position);
+            return simplified;
+          };
+          objOriginal.traverse(o => {
             if (o.isMesh) {
-              o.castShadow = true;
-              o.receiveShadow = true;
-              //TODO: will need a better way to determine what has alpha
-              if (o.name.includes('leaf')) {
-                //this allows transparent textures such a tree leaves
-                o.material.transparent = true;
-                //this removes depth issues where leaves behind were blacked
-                //out behind leaves in front
-                o.material.alphaTest = 0.5;
-                const customDepthMaterial = new THREE.MeshDepthMaterial({
-                  depthPacking: THREE.RGBADepthPacking,
-
-                  map: o.material.map, // or, alphaMap: myAlphaMap
-
-                  alphaTest: 0.5,
-                });
-
-                o.customDepthMaterial = customDepthMaterial;
-              }
+              o = simplify(o);
             }
           });
-          var lod = new THREE.LOD();
-          //Create spheres with 3 levels of detail and create new LOD levels for them
-          //for (var i = 0; i < 3; i++) {
-          lod.addLevel(obj, 0);
-          var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
+          const simplified = objOriginal; //simplify(objOriginal);
+          const pushObj = obj => {
+            const newObj = obj || objOriginal.clone();
+            const rndInCircle = randomPositionInCircle(200);
+            //newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
+            //newObj.rotation.y = Math.random() * Math.PI * 2;
+            const yRot = Math.random() * Math.PI * 2;
+            objs.push({ obj: newObj, pos: rndInCircle, yRot });
+          };
+          pushObj(simplified);
+          for (let i = 0; i < 100; i++) {
+            //var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
+            //var mesh = new THREE.Mesh(geometry, obj.material);
+            pushObj(simplified.clone());
+          }
+          objs.forEach(({ obj, pos, yRot }) => {
+            obj.scale.set(0.015 * this.scl, 0.015 * this.scl, 0.015 * this.scl);
+            obj.castShadow = true;
+            obj.receiveShadow = true;
 
-          var mesh = new THREE.Mesh(
-            geometry,
-            new THREE.MeshBasicMaterial(0xff0000)
-          );
-          //mesh.position.copy(obj.position);
-          lod.addLevel(mesh, 80);
-          lod.position.set(pos.x, 0, pos.y);
-          lod.rotation.y = yRot;
-          //}
-          this.lods.push(lod);
+            obj.traverse(o => {
+              if (o.isMesh) {
+                o.castShadow = true;
+                o.receiveShadow = true;
+                //TODO: will need a better way to determine what has alpha
+                if (o.name.includes('leaf')) {
+                  //this allows transparent textures such a tree leaves
+                  o.material.transparent = true;
+                  //this removes depth issues where leaves behind were blacked
+                  //out behind leaves in front
+                  o.material.alphaTest = 0.5;
+                  const customDepthMaterial = new THREE.MeshDepthMaterial({
+                    depthPacking: THREE.RGBADepthPacking,
 
-          this.scene.add(lod);
-          //this.scene.add(obj);
+                    map: o.material.map, // or, alphaMap: myAlphaMap
+
+                    alphaTest: 0.5,
+                  });
+
+                  o.customDepthMaterial = customDepthMaterial;
+                }
+              }
+            });
+            var lod = new THREE.LOD();
+            //Create spheres with 3 levels of detail and create new LOD levels for them
+            //for (var i = 0; i < 3; i++) {
+            lod.addLevel(obj, 0);
+            var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
+
+            var mesh = new THREE.Mesh(
+              geometry,
+              new THREE.MeshBasicMaterial(0xff0000)
+            );
+            //mesh.position.copy(obj.position);
+            lod.addLevel(mesh, 80);
+            lod.position.set(pos.x, 0, pos.y);
+            lod.rotation.y = yRot;
+            //}
+            this.lods.push(lod);
+
+            this.scene.add(lod);
+            //this.scene.add(obj);
+          });
+        })
+        .catch(err => {
+          console.error('error loading models', err);
         });
-      })
-      .catch(err => {
-        console.error('error loading models', err);
-      });
+    });
   };
   componentDidMount() {
     window.THREE = THREE;
@@ -669,7 +697,7 @@ class Scene extends Component {
           ? 0
           : (1 - Math.abs(0.5 - ((azi + threshold) % 1) / 0.65) - 0.5) * 2;
       //Math.abs((azi % 0.5) - 0.25) * 4;
-      if (this.frame % 2 === 0) console.log(this.ambiBrightness);
+      //if (this.frame % 2 === 0) console.log(this.ambiBrightness);
       this.brightness = this.aziBrightness;
       //console.log('azih', this.aziHeight ** 4);
 
