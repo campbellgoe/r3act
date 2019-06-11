@@ -174,14 +174,74 @@ Sky.SkyShader = {
 
     uniform vec2 u_resolution;
     uniform float u_time;
-    float random (vec2 st, float mag) {
-      float magpie = (mag*pi*2.0);
-      float x = cos(st.x/st.y+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(cos((u_time+633.3)/533.3)*10.0+15.0));
-      float y = sin(st.y/st.x+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(sin((u_time+333.3)/333.3)*30.0+25.0));
-     // float y = (u_time/500.0)+(sin(u_time/1000.0)*magpie+(magpie*2.0));
+    float circle(in vec2 _st, in float _radius){
+      vec2 dist = _st-vec2(0.5);
+      return 1.-smoothstep(_radius-(_radius*0.01),
+        _radius+(_radius*0.01),
+        dot(dist,dist)*4.0);
+  }
+  float random (in vec2 st) {
+    return fract(sin(dot(st.xy,
+                         vec2(12.9898,78.233)))*
+        43758.5453123);
+}
+
+// Based on Morgan McGuire @morgan3d
+// https://www.shadertoy.com/view/4dS3Wd
+float noise (in vec2 st) {
+    vec2 i = floor(st);
+    vec2 f = fract(st);
+
+    // Four corners in 2D of a tile
+    float a = random(i);
+    float b = random(i + vec2(1.0, 0.0));
+    float c = random(i + vec2(0.0, 1.0));
+    float d = random(i + vec2(1.0, 1.0));
+
+    vec2 u = f * f * (pi - pi/2.0 * f) * (sin(u_time/300.0));
+
+    return mix(a, b, u.x) +
+            (c - a)* u.y * (1.0 - u.x) +
+            (d - b) * u.x * u.y;
+}
+
+    #define NUM_OCTAVES 5
+    float fbm ( in vec2 _st, in float mag) {
+      float v = 0.0;
+      float a = 0.5;
+      vec2 shift = vec2(sin(u_time/600.0+_st.y/4.0+(mag/8.0*pi*2.0))*_st.x);
+      // Rotate to reduce axial bias
+      mat2 rot = mat2(cos(0.5), sin(0.5),
+                      -sin(0.5), cos(0.50));
+      for (int i = 0; i < NUM_OCTAVES; ++i) {
+          v += a * noise(_st);
+          _st = rot * _st * 2.0 + shift;
+          a *= 0.5;
+      }
+      return v;
+    }
+    float wab2 (vec2 st, float mag) {
+      float pi2 = pi*2.0;
+      float magpie = (mag*pi2);
+      //float x = cos(st.x/st.y+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(cos((u_time+633.3)/533.3)*10.0+15.0));
+      //float y = sin(st.y/st.x+(u_time/100.0))+pow(magpie,2.0)/mag+(u_time/(sin((u_time+333.3)/333.3)*30.0+25.0));
+      //float y = (u_time/50.0)+(sin(u_time/100.0));
       //float x = ceil(magpie*cos(u_time/120.0));
-      // float x = ceil(magpie*sin(u_time/120.0))*10.0;
-      // float y = ceil(magpie*cos(u_time/120.0))*10.0;
+       //float x = magpie;//pow(sin(u_time/240.0)*pi/2.0, magpie);
+       //float y = (cos(u_time/240.0)*pi2*0.5)*sin(pi*u_time/1000.0)*pi*3.0;
+       float x = 0.0;
+       float y = pi2;
+       if(mag == 1.0){
+         //r
+         y = cos(u_time/100.0)*(sin(pi*32.0)+0.5*pi*4.0);
+         x = pi*4.0;
+       } else if(mag == 2.0){
+         //g
+         y = pi*6.0;
+       } else {
+         //b
+         y = pi*4.0;
+       }
       return sin(dot(st.xy,
         vec2(
           x,
@@ -232,13 +292,23 @@ Sky.SkyShader = {
 
     	vec3 retColor = pow( color, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) );
      vec2 st = gl_FragCoord.xy;
-
-     float rndA = random( uv, 1.0 );
-     float rndB = random( uv, 3.0);
-     float rndC= random( uv, 6.0);
-     gl_FragColor = vec4(rndA,rndB,rndC,1.0);
+        //vec3 colorR = vec3(0.0);
+        float colorR = fbm(uv*pi*8.0, 1.0);
+        //vec3 colorG = vec3(0.0);
+        float colorG = fbm(uv*pi*8.0, 2.0);
+       // vec3 colorB = vec3(0.0);
+        float colorB = fbm(uv*pi*8.0, 3.0);
+    
+        gl_FragColor = vec4(colorR, colorG, colorB,1.0);
+    //  float rndA = random( uv, 1.0);
+    //  float rndB = random( uv, 2.0);
+    //  float rndC= random( uv, 3.0);
+    //  gl_FragColor = vec4(rndA,rndB,rndC,1.0);
     //	gl_FragColor = vec4( retColor, 1.0 );
     //gl_FragColor = vec4(abs(sin(u_time/80.0)),0.0,0.0,1.0);
-
+      // vec2 translate = vec2(cos(u_time/(pi*32.0))*pi/2.0,sin(u_time/(pi*32.0))*pi/2.0);
+      // uv += translate/pi;
+      // gl_FragColor = vec4(circle( uv, sin(u_time/100.0)+1.0)*pi, circle( uv, sin(u_time/100.0+33.3)+1.0)*pi, circle( uv, sin(u_time/100.0+66.6)+1.0)*pi, 1.0);
+     // gl_FragColor = vec4(random(uv, 1.0), random(uv, 2.0), random(uv, 3.0), 1.0);
     }`,
 };
