@@ -198,7 +198,7 @@ float noise (in vec2 st) {
     float c = random(i + vec2(0.0, 1.0));
     float d = random(i + vec2(1.0, 1.0));
 
-    vec2 u = f * f * (pi - pi/2.0 * f) * (sin(u_time/300.0));
+    vec2 u = f * f * (pi - pi/2.0 * f) * (sin(u_time/300.0)+8.0);
 
     return mix(a, b, u.x) +
             (c - a)* u.y * (1.0 - u.x) +
