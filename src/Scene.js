@@ -355,16 +355,15 @@ class Scene extends Component {
     if (enableCamShowcase) {
       // cube.rotation.x += 0.01;
       // cube.rotation.y += 0.01;
-      let x = Math.sin(ms / 160) * 12 * this.scl;
-      let y = Math.cos(ms / 320) * 9 * this.scl + 11 * this.scl;
-      let z = Math.cos(ms / 210) * 12 * this.scl;
+      let x = Math.sin(ms / 100) * 200;
+      let y = Math.cos(ms / 1000) * 1000;
+      let z = Math.cos(ms / 100) * 200;
 
       cam.position.set(o.x, o.y, o.z);
-      y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
-      //const point = new THREE.Vector3(0, y, 0);
+      //y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
+      const point = new THREE.Vector3(x, y, z);
 
-      //cam.lookAt(point);
-      this.helper.update();
+      cam.lookAt(point);
     }
     if (this.sky && this.sunSphere) {
       //the closer to 0 and 0.5, the slower the rate of change should be..

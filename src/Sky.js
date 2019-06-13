@@ -188,9 +188,9 @@ Sky.SkyShader = {
 
 // Based on Morgan McGuire @morgan3d
 // https://www.shadertoy.com/view/4dS3Wd
-float noise (in vec2 st) {
-    vec2 i = floor(st);
-    vec2 f = fract(st);
+float noise (in vec2 uv, in vec2 st) {
+    vec2 i = floor(uv);
+    vec2 f = fract(uv);
 
     // Four corners in 2D of a tile
     float a = random(i);
@@ -206,16 +206,16 @@ float noise (in vec2 st) {
 }
 
     #define NUM_OCTAVES 5
-    float fbm ( in vec2 _st, in float mag) {
+    float fbm ( in vec2 _uv, in vec2 _st, in float mag) {
       float v = 0.0;
       float a = 0.5;
-      vec2 shift = vec2(sin(u_time/600.0+_st.y/4.0+(mag/8.0*pi*2.0))*_st.x);
+      vec2 shift = vec2(sin(u_time/60.0/4.0+(mag/8.0*pi*2.0)));
       // Rotate to reduce axial bias
       mat2 rot = mat2(cos(0.5), sin(0.5),
                       -sin(0.5), cos(0.50));
       for (int i = 0; i < NUM_OCTAVES; ++i) {
-          v += a * noise(_st);
-          _st = rot * _st * 2.0 + shift;
+          v += a * noise(_uv * vec2(pi*0.125, pi*((cos(u_time/1000.0)*0.125+0.125))), _st);
+          _uv =  _uv * 2.0 + shift;
           a *= 0.5;
       }
       return v;
@@ -252,6 +252,7 @@ float noise (in vec2 st) {
       //    43758.5453123);
     }
     void main() {
+      vec2 st = normalize(gl_FragCoord.xy);
     // optical length
     // cutoff angle at 90 to avoid singularity in next formula.
     	float zenithAngle = acos( max( 0.0, dot( up, normalize( vWorldPosition - cameraPos ) ) ) );
@@ -278,7 +279,7 @@ float noise (in vec2 st) {
     	vec3 direction = normalize( vWorldPosition - cameraPos );
     	float theta = acos( direction.y ); // elevation --> y-axis, [-pi/2, pi/2]
     	float phi = atan( direction.z, direction.x ); // azimuth --> x-axis [-pi/2, pi/2]
-    	vec2 uv = vec2( phi, theta ) / vec2( 2.0 * pi, pi ) + vec2( 0.5, 0.0 );
+    	vec2 uv = vec2( sin(theta)*pi*2.0, phi ) / vec2( 2.0 * pi, pi * 2.0 ) + vec2( 0.5, 0.0);
     	vec3 L0 = vec3( 0.1 ) * Fex;
 
     // composition + solar disc
@@ -291,13 +292,13 @@ float noise (in vec2 st) {
     	vec3 color = curr * whiteScale;
 
     	vec3 retColor = pow( color, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) );
-     vec2 st = gl_FragCoord.xy;
+     
         //vec3 colorR = vec3(0.0);
-        float colorR = fbm(uv*pi*8.0, 1.0);
+        float colorR = fbm(uv*pi*8.0, st, 1.0);
         //vec3 colorG = vec3(0.0);
-        float colorG = fbm(uv*pi*8.0, 2.0);
+        float colorG = fbm(uv*pi*8.0, st, 2.0);
        // vec3 colorB = vec3(0.0);
-        float colorB = fbm(uv*pi*8.0, 3.0);
+        float colorB = fbm(uv*pi*8.0, st, 3.0);
     
         gl_FragColor = vec4(colorR, colorG, colorB,1.0);
     //  float rndA = random( uv, 1.0);
