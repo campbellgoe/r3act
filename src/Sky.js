@@ -198,23 +198,23 @@ float noise (in vec2 uv, in vec2 st) {
     float c = random(i + vec2(0.0, 1.0));
     float d = random(i + vec2(1.0, 1.0));
 
-    vec2 u = f * f * (pi - pi/2.0 * f) * (sin(u_time/300.0)+8.0);
+    vec2 u = f * f * (pi - pi/2.0 * f) * 8.0;
 
     return mix(a, b, u.x) +
             (c - a)* u.y * (1.0 - u.x) +
             (d - b) * u.x * u.y;
 }
 
-    #define NUM_OCTAVES 5
-    float fbm ( in vec2 _uv, in vec2 _st, in float mag) {
+    #define NUM_OCTAVES 4
+    float fbm ( in vec2 _uv, in vec2 st, in float mag) {
       float v = 0.0;
       float a = 0.5;
-      vec2 shift = vec2(sin(u_time/60.0/4.0+(mag/8.0*pi*2.0)));
+      vec2 shift = vec2(sin(u_time/120.0/4.0+(mag/8.0*pi*2.0)));
       // Rotate to reduce axial bias
       mat2 rot = mat2(cos(0.5), sin(0.5),
                       -sin(0.5), cos(0.50));
       for (int i = 0; i < NUM_OCTAVES; ++i) {
-          v += a * noise(_uv * vec2(pi*0.125, pi*((cos(u_time/1000.0)*0.125+0.125))), _st);
+          v += a * noise(_uv * vec2(pi*0.125, pi*0.25), st);
           _uv =  _uv * 2.0 + shift;
           a *= 0.5;
       }
@@ -277,9 +277,9 @@ float noise (in vec2 uv, in vec2 st) {
 
     // nightsky
     	vec3 direction = normalize( vWorldPosition - cameraPos );
-    	float theta = acos( direction.y ); // elevation --> y-axis, [-pi/2, pi/2]
-    	float phi = atan( direction.z, direction.x ); // azimuth --> x-axis [-pi/2, pi/2]
-    	vec2 uv = vec2( sin(theta)*pi*2.0, phi ) / vec2( 2.0 * pi, pi * 2.0 ) + vec2( 0.5, 0.0);
+    	float theta = acos( direction.x ); // elevation --> y-axis, [-pi/2, pi/2]
+    	float phi = atan( (sin(u_time/300.0)*direction.y+direction.x)+(cos(u_time/600.0)*direction.x+direction.y), direction.z ); // azimuth --> x-axis [-pi/2, pi/2]
+    	vec2 uv = vec2( cosTheta, phi+(pow(cosTheta,cosTheta)) ) / vec2( pi * 4.0, pi * 4.0 ) + vec2( 0.5, 0.0);
     	vec3 L0 = vec3( 0.1 ) * Fex;
 
     // composition + solar disc

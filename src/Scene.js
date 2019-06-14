@@ -355,9 +355,9 @@ class Scene extends Component {
     if (enableCamShowcase) {
       // cube.rotation.x += 0.01;
       // cube.rotation.y += 0.01;
-      let x = Math.sin(ms / 100) * 200;
-      let y = Math.cos(ms / 1000) * 1000;
-      let z = Math.cos(ms / 100) * 200;
+      let x = Math.sin(ms / 200) * 120 + 120;
+      let y = Math.cos(ms / 300) * 500;
+      let z = Math.cos(ms / 400) * 200;
 
       cam.position.set(o.x, o.y, o.z);
       //y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
@@ -401,8 +401,8 @@ class Scene extends Component {
         let t0 = Date.now();
         setInterval(() => {
           //console.log('elapsed', Date.now() - t0);
-          this.aziA += 1 / 16 / (60 * this.daynight.minutes); //8 minutes for 1 day and night
-        }, 1000 / 16);
+          this.aziA += 1 / 64 / (60 * this.daynight.minutes); //8 minutes for 1 day and night
+        }, 1000 / 64);
       }
 
       if (this.frameAzi % 100 === 0) {
