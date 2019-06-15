@@ -308,17 +308,23 @@ class Scene extends Component {
     const scene = new THREE.Scene();
     this.scene = scene;
     this.setupScene();
-
     if (window.DeviceOrientationEvent) {
       importDeviceOrientationControls().then(DeviceOrientationControls => {
         const controls = new DeviceOrientationControls(this.camera);
         this.orientationControls = controls;
+        if (
+          this.orientationControls &&
+          this.orientationControls.deviceOrientation.type ===
+            'deviceorientation'
+        ) {
+          settings.enableCameraShowcase = false;
+        }
       });
-    } else {
-      const controls = new OrbitControls(this.camera, this.renderer.domElement);
-      //controls.addEventListener( 'change', render );
-      this.cameraControls = controls;
     }
+    const controls = new OrbitControls(this.camera, this.renderer.domElement);
+    //controls.addEventListener( 'change', render );
+    this.cameraControls = controls;
+
     window.addEventListener('mousemove', e => {
       this.onMouseMove(e);
     });
@@ -367,9 +373,9 @@ class Scene extends Component {
     if (enableCamShowcase) {
       // cube.rotation.x += 0.01;
       // cube.rotation.y += 0.01;
-      let x = Math.sin(ms / 200) * 120 + 120;
-      let y = Math.cos(ms / 300) * 500;
-      let z = Math.cos(ms / 400) * 200;
+      let x = Math.sin(ms / 208) * 460 + 50;
+      let y = Math.cos(ms / 331) * 505 + 150;
+      let z = Math.cos(ms / 417) * 420 + 100;
 
       cam.position.set(o.x, o.y, o.z);
       //y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
