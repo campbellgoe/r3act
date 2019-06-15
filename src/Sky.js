@@ -39,6 +39,7 @@ Sky.SkyShader = {
     sunPosition: { value: new THREE.Vector3() },
     u_time: { type: 'f', value: 1.0 },
     u_resolution: { type: 'v2', value: new THREE.Vector2() },
+    u_mouse: { type: 'v2', value: new THREE.Vector2() },
   },
 
   vertexShader: `
@@ -121,7 +122,13 @@ Sky.SkyShader = {
     varying vec3 vBetaR;
     varying vec3 vBetaM;
     varying float vSunE;
+    #ifdef GL_ES
+    precision mediump float;
+    #endif
 
+    uniform vec2 u_resolution;
+    uniform vec2 u_mouse;
+    uniform float u_time;
     uniform float luminance;
     uniform float mieDirectionalG;
 
@@ -168,12 +175,7 @@ Sky.SkyShader = {
     vec3 Uncharted2Tonemap( vec3 x ) {
     	return ( ( x * ( A * x + C * B ) + D * E ) / ( x * ( A * x + B ) + D * F ) ) - E / F;
     }
-    #ifdef GL_ES
-    precision mediump float;
-    #endif
 
-    uniform vec2 u_resolution;
-    uniform float u_time;
     float circle(in vec2 _st, in float _radius){
       vec2 dist = _st-vec2(0.5);
       return 1.-smoothstep(_radius-(_radius*0.01),
@@ -278,8 +280,8 @@ float noise (in vec2 uv, in vec2 st) {
     // nightsky
     	vec3 direction = normalize( vWorldPosition - cameraPos );
     	float theta = acos( direction.x ); // elevation --> y-axis, [-pi/2, pi/2]
-    	float phi = atan( (sin(u_time/300.0)*direction.y+direction.x)+(cos(u_time/600.0)*direction.x+direction.y), direction.z ); // azimuth --> x-axis [-pi/2, pi/2]
-    	vec2 uv = vec2( cosTheta, phi+(pow(cosTheta,cosTheta)) ) / vec2( pi * 4.0, pi * 4.0 ) + vec2( 0.5, 0.0);
+    	float phi = atan( direction.y, direction.z ); // azimuth --> x-axis [-pi/2, pi/2]
+    	vec2 uv = vec2( cosTheta, phi ) / vec2( pi * 4.0, pi * 4.0 ) + vec2( 0.5, 0.0);
     	vec3 L0 = vec3( 0.1 ) * Fex;
 
     // composition + solar disc
@@ -296,11 +298,11 @@ float noise (in vec2 uv, in vec2 st) {
         //vec3 colorR = vec3(0.0);
         float colorR = fbm(uv*pi*8.0, st, 1.0);
         //vec3 colorG = vec3(0.0);
-        float colorG = fbm(uv*pi*8.0, st, 2.0);
+        float colorG = fbm(uv*pi*8.0, st, 1.05);
        // vec3 colorB = vec3(0.0);
-        float colorB = fbm(uv*pi*8.0, st, 3.0);
+        float colorB = fbm(uv*pi*8.0, st, 1.1);
     
-        gl_FragColor = vec4(colorR, colorG, colorB,1.0);
+        gl_FragColor = vec4(colorR, colorG,colorB ,1.0);
     //  float rndA = random( uv, 1.0);
     //  float rndB = random( uv, 2.0);
     //  float rndC= random( uv, 3.0);

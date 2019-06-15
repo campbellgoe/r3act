@@ -19,7 +19,7 @@ const importDeviceOrientationControls = () => {
   );
 };
 const settings = {
-  enableCameraShowcase: false,
+  enableCameraShowcase: true,
   load: {
     models: false,
     lights: false,
@@ -64,6 +64,7 @@ class Scene extends Component {
     azimuth: 0.4,
     sun: true,
     u_time: 1.0,
+    u_mouse: new THREE.Vector2(),
     u_resolution: new THREE.Vector2(),
   };
   updateSkyAndSun = (sky, sunSphere, settings) => {
@@ -75,6 +76,7 @@ class Scene extends Component {
     uniforms['mieDirectionalG'].value = settings.mieDirectionalG;
     uniforms['u_time'].value = settings.u_time;
     uniforms['u_resolution'].value = settings.u_resolution;
+    uniforms['u_mouse'].value = settings.u_mouse;
 
     let theta = Math.PI * (settings.inclination - 0.5);
     let phi = 2 * Math.PI * (settings.azimuth - 0.5);
@@ -292,6 +294,12 @@ class Scene extends Component {
         console.error('error loading models', err);
       });
   };
+  onMouseMove = e => {
+    this.mouseNormalized = new THREE.Vector2(
+      e.pageX / window.innerWidth,
+      e.pageY / window.innerHeight
+    );
+  };
   componentDidMount() {
     window.THREE = THREE;
     this.width = window.innerWidth;
@@ -300,16 +308,20 @@ class Scene extends Component {
     const scene = new THREE.Scene();
     this.scene = scene;
     this.setupScene();
-    const controls = new OrbitControls(this.camera, this.renderer.domElement);
-    //controls.addEventListener( 'change', render );
-    this.cameraControls = controls;
 
     if (window.DeviceOrientationEvent) {
       importDeviceOrientationControls().then(DeviceOrientationControls => {
         const controls = new DeviceOrientationControls(this.camera);
         this.orientationControls = controls;
       });
+    } else {
+      const controls = new OrbitControls(this.camera, this.renderer.domElement);
+      //controls.addEventListener( 'change', render );
+      this.cameraControls = controls;
     }
+    window.addEventListener('mousemove', e => {
+      this.onMouseMove(e);
+    });
 
     this.mount.appendChild(this.renderer.domElement);
     this.start();
@@ -350,7 +362,7 @@ class Scene extends Component {
     ) {
       this.orientationControls.update();
     }
-    this.cameraControls.update();
+    if (this.cameraControls) this.cameraControls.update();
     //const cube = this.cube;
     if (enableCamShowcase) {
       // cube.rotation.x += 0.01;
@@ -441,6 +453,7 @@ class Scene extends Component {
       rayleigh = this.aziHeight * 2 + 2;
       //console.log('rayleigh', rayleigh);
       //console.log('angle', angle, 'azi', azi, 'day?', angle <= Math.PI);
+      console.log('mouse nomralized', this.mouseNormalized);
       this.updateSkyAndSun(this.sky, this.sunSphere, {
         ...this.skySettings,
         azimuth: azi,
@@ -450,6 +463,10 @@ class Scene extends Component {
         u_resolution: {
           ...this.skySettings.u_resolution,
           value: new THREE.Vector2(window.innerWidth, window.innerHeight),
+        },
+        u_mouse: {
+          ...this.skySettings.u_mouse,
+          value: new THREE.Vector2(this.mouseNormalized),
         },
       });
 
