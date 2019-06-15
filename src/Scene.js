@@ -367,8 +367,9 @@ class Scene extends Component {
       this.orientationControls.deviceOrientation.type === 'deviceorientation'
     ) {
       this.orientationControls.update();
+    } else {
+      if (this.cameraControls) this.cameraControls.update();
     }
-    if (this.cameraControls) this.cameraControls.update();
     //const cube = this.cube;
     if (enableCamShowcase) {
       // cube.rotation.x += 0.01;
