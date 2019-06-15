@@ -369,20 +369,21 @@ class Scene extends Component {
       this.orientationControls.update();
     } else {
       if (this.cameraControls) this.cameraControls.update();
-    }
-    //const cube = this.cube;
-    if (enableCamShowcase) {
-      // cube.rotation.x += 0.01;
-      // cube.rotation.y += 0.01;
-      let x = Math.sin(ms / 208) * 460 + 50;
-      let y = Math.cos(ms / 331) * 505 + 150;
-      let z = Math.cos(ms / 417) * 420 + 100;
 
-      cam.position.set(o.x, o.y, o.z);
-      //y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
-      const point = new THREE.Vector3(x, y, z);
+      //const cube = this.cube;
+      if (enableCamShowcase) {
+        // cube.rotation.x += 0.01;
+        // cube.rotation.y += 0.01;
+        let x = Math.sin(ms / 208) * 460 + 50;
+        let y = Math.cos(ms / 331) * 505 + 150;
+        let z = Math.cos(ms / 417) * 420 + 100;
 
-      cam.lookAt(point);
+        cam.position.set(o.x, o.y, o.z);
+        //y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
+        const point = new THREE.Vector3(x, y, z);
+
+        cam.lookAt(point);
+      }
     }
     if (this.sky && this.sunSphere) {
       //the closer to 0 and 0.5, the slower the rate of change should be..
