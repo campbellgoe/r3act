@@ -175,13 +175,13 @@ Sky.SkyShader = {
     uniform vec2 u_resolution;
     uniform float u_time;
     float circle(in vec2 _st, in float _radius){
-      vec2 dist = _st-vec2(0.5);
+      vec2 dist = _st-vec2(pi/2.0);
       return 1.-smoothstep(_radius-(_radius*0.01),
         _radius+(_radius*0.01),
         dot(dist,dist)*4.0);
   }
   float random (in vec2 st) {
-    return fract(sin(dot(st.xy,
+    return (sin(dot(st.xy,
                          vec2(12.9898,78.233)))*
         43758.5453123);
 }
@@ -189,8 +189,8 @@ Sky.SkyShader = {
 // Based on Morgan McGuire @morgan3d
 // https://www.shadertoy.com/view/4dS3Wd
 float noise (in vec2 st) {
-    vec2 i = floor(st);
-    vec2 f = fract(st);
+    vec2 i = sin(st*5.0)/pi;
+    vec2 f = (st);
 
     // Four corners in 2D of a tile
     float a = random(i);
@@ -198,7 +198,7 @@ float noise (in vec2 st) {
     float c = random(i + vec2(0.0, 1.0));
     float d = random(i + vec2(1.0, 1.0));
 
-    vec2 u = f * f * (pi - pi/2.0 * f) * (sin(u_time/300.0));
+    vec2 u = f * f * (pi - pi/2.0 * f) ;
 
     return mix(a, b, u.x) +
             (c - a)* u.y * (1.0 - u.x) +
@@ -206,16 +206,16 @@ float noise (in vec2 st) {
 }
 
     #define NUM_OCTAVES 5
-    float fbm ( in vec2 _st, in float mag) {
+    float fbm ( in vec2 uv, in float mag) {
+      uv += u_time/1000.0;
       float v = 0.0;
       float a = 0.5;
-      vec2 shift = vec2(sin(u_time/600.0+_st.y/4.0+(mag/8.0*pi*2.0))*_st.x);
+      vec2 shift = vec2( sin( u_time/(pi*64.0) )*pi/2.0*mag,  cos( u_time/(pi*64.0) )*pi/2.0*mag);
       // Rotate to reduce axial bias
       mat2 rot = mat2(cos(0.5), sin(0.5),
                       -sin(0.5), cos(0.50));
       for (int i = 0; i < NUM_OCTAVES; ++i) {
-          v += a * noise(_st);
-          _st = rot * _st * 2.0 + shift;
+          v += a * noise(uv+pi+(mag/4.0));
           a *= 0.5;
       }
       return v;
@@ -278,7 +278,7 @@ float noise (in vec2 st) {
     	vec3 direction = normalize( vWorldPosition - cameraPos );
     	float theta = acos( direction.y ); // elevation --> y-axis, [-pi/2, pi/2]
     	float phi = atan( direction.z, direction.x ); // azimuth --> x-axis [-pi/2, pi/2]
-    	vec2 uv = vec2( phi, theta ) / vec2( 2.0 * pi, pi ) + vec2( 0.5, 0.0 );
+    	vec2 uv = vec2( phi, theta ) / vec2( 2.0 * pi, pi ) + vec2( pi, 0.0 );
     	vec3 L0 = vec3( 0.1 ) * Fex;
 
     // composition + solar disc
@@ -293,11 +293,11 @@ float noise (in vec2 st) {
     	vec3 retColor = pow( color, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) );
      vec2 st = gl_FragCoord.xy;
         //vec3 colorR = vec3(0.0);
-        float colorR = fbm(uv*pi*8.0, 1.0);
+        float colorR = fbm(uv*(pi*2.0), 1.0);
         //vec3 colorG = vec3(0.0);
-        float colorG = fbm(uv*pi*8.0, 2.0);
+        float colorG = fbm(uv*(pi*2.0), 1.05);
        // vec3 colorB = vec3(0.0);
-        float colorB = fbm(uv*pi*8.0, 3.0);
+        float colorB = fbm(uv*(pi*2.0), 1.1);
     
         gl_FragColor = vec4(colorR, colorG, colorB,1.0);
     //  float rndA = random( uv, 1.0);
