@@ -189,8 +189,13 @@ Sky.SkyShader = {
 // Based on Morgan McGuire @morgan3d
 // https://www.shadertoy.com/view/4dS3Wd
 float noise (in vec2 st) {
-    vec2 i = sin(st*5.0)/pi;
-    vec2 f = (st);
+    float loopSpeed = pi*24.0;
+    float spokes = mod(ceil( (u_time/ (loopSpeed*pi*pi/2.0) ) /2.0 ), 11.0)+2.0;
+    float rings = sin((u_time/ (loopSpeed*pi) ))/2.5;
+
+    vec2 i = sin(st*ceil( spokes ))/pi*rings;
+    float rt = 1.0;//(sin( u_time/200.0 )*3.0);
+    //vec2 f = (st*rt);
 
     // Four corners in 2D of a tile
     float a = random(i);
@@ -198,7 +203,7 @@ float noise (in vec2 st) {
     float c = random(i + vec2(0.0, 1.0));
     float d = random(i + vec2(1.0, 1.0));
 
-    vec2 u = f * f * (pi - pi/2.0 * f) ;
+    vec2 u = vec2(pi - pi/2.0 * rt) ;
 
     return mix(a, b, u.x) +
             (c - a)* u.y * (1.0 - u.x) +
@@ -207,9 +212,9 @@ float noise (in vec2 st) {
 
     #define NUM_OCTAVES 5
     float fbm ( in vec2 uv, in float mag) {
-      uv += u_time/1000.0;
+      uv += u_time/400.0;
       float v = 0.0;
-      float a = 0.5;
+      float a = .5;
       vec2 shift = vec2( sin( u_time/(pi*64.0) )*pi/2.0*mag,  cos( u_time/(pi*64.0) )*pi/2.0*mag);
       // Rotate to reduce axial bias
       mat2 rot = mat2(cos(0.5), sin(0.5),
