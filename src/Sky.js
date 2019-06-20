@@ -190,7 +190,9 @@ Sky.SkyShader = {
 // https://www.shadertoy.com/view/4dS3Wd
 float noise (in vec2 st) {
     float loopSpeed = pi*24.0;
-    float spokes = mod(ceil( (u_time/ (loopSpeed*pi*pi/2.0) ) /2.0 ), 11.0)+2.0;
+    float spokes = mod(ceil(
+        (u_time/ (loopSpeed*pi*pi/2.0) ) /2.0
+      ), 11.0)+2.0;
     float rings = sin((u_time/ (loopSpeed*pi) ))/2.5;
 
     vec2 i = sin(st*ceil( spokes ))/pi*rings;
@@ -287,7 +289,7 @@ float noise (in vec2 st) {
     	vec3 L0 = vec3( 0.1 ) * Fex;
 
     // composition + solar disc
-    	float sundisk = smoothstep( sunAngularDiameterCos, sunAngularDiameterCos + 0.00002, cosTheta );
+    	float sundisk = smoothstep( sunAngularDiameterCos, sunAngularDiameterCos * 0.2 + 0.00000002, cosTheta*2.2 );
     	L0 += ( vSunE * 19000.0 * Fex ) * sundisk;
 
     	vec3 texColor = ( Lin + L0 ) * 0.04 + vec3( 0.0, 0.0003, 0.00075 );
@@ -298,11 +300,11 @@ float noise (in vec2 st) {
     	vec3 retColor = pow( color, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) );
      vec2 st = gl_FragCoord.xy;
         //vec3 colorR = vec3(0.0);
-        float colorR = fbm(uv*(pi*2.0), 1.0);
+        float colorR = fbm(uv*(pi*2.0), 1.0 );
         //vec3 colorG = vec3(0.0);
-        float colorG = fbm(uv*(pi*2.0), 1.05);
+        float colorG = fbm(uv*(pi*2.0), 1.05 );
        // vec3 colorB = vec3(0.0);
-        float colorB = fbm(uv*(pi*2.0), 1.1);
+        float colorB = fbm(uv*(pi*2.0), 1.1 );
     
         gl_FragColor = vec4(colorR, colorG, colorB,1.0);
     //  float rndA = random( uv, 1.0);

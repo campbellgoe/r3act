@@ -355,16 +355,23 @@ class Scene extends Component {
       if (enableCamShowcase) {
         // cube.rotation.x += 0.01;
         // cube.rotation.y += 0.01;
-        let x = Math.sin(ms / 160) * 12 * this.scl;
-        let y = Math.cos(ms / 320) * 9 * this.scl + 11 * this.scl;
-        let z = Math.cos(ms / 210) * 12 * this.scl;
+        //
+        const delayer = 4;
+        const vx = Math.sin(ms / (100 * delayer));
+        const vy =
+          Math.sin(ms / (100 * delayer)) *
+          (Math.cos(ms / (200 * delayer)) *
+            40 *
+            (Math.cos(ms / (100 * delayer)) / 2 + 0.5));
+        const vz = Math.cos(ms / (100 * delayer));
 
-        cam.position.set(o.x, o.y, o.z);
-        y = Math.sin(ms / 220) * 5 * this.scl + 5 * this.scl;
-        //const point = new THREE.Vector3(0, y, 0);
+        const ox = 0.1; //Math.sin(ms / 100 + 25); //vy > 0 ? 1 - vy : -1 - vy; //Math.sin(ms / 50); //Math.sin(ms / 100) * 10;
+        const oy = 0.1; //vy > 0 ? 1 - vy : -1 - vy;
+        const oz = 0.1; //Math.sin(ms / 100 + 25);
+        cam.position.set(ox, oy, oz);
 
-        //cam.lookAt(point);
-        this.helper.update();
+        cam.lookAt(new THREE.Vector3(vx, vy, vz));
+        //this.helper.update();
       }
     }
     if (this.sky && this.sunSphere) {
@@ -399,14 +406,14 @@ class Scene extends Component {
       //   frameId = requestAnimationFrame(loop);
       // }
 
-      if (this.frameAzi === 0) {
-        let t0 = Date.now();
-        setInterval(() => {
-          //console.log('elapsed', Date.now() - t0);
-          this.aziA += 1 / 16 / (60 * this.daynight.minutes); //8 minutes for 1 day and night
-        }, 1000 / 16);
-      }
-
+      // if (this.frameAzi === 0) {
+      //   let t0 = Date.now();
+      //   setInterval(() => {
+      //     //console.log('elapsed', Date.now() - t0);
+      //     this.aziA += 1 / 16 / (60 * this.daynight.minutes); //8 minutes for 1 day and night
+      //   }, 1000 / 16);
+      // }
+      this.aziA += 1 / 60 / (60 * this.daynight.minutes); //8 minutes for 1 day and night
       if (this.frameAzi % 100 === 0) {
         // console.log(ms, (ms / 100) % 100);
         // this.aziA += 1 / 10000;
