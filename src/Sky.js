@@ -128,6 +128,7 @@ Sky.SkyShader = {
     const vec3 cameraPos = vec3( 0.0, 0.0, 0.0 );
 
     // constants for atmospheric scattering
+    const float e = 2.71828182845904523536028747135266249775724709369995957;
     const float pi = 3.141592653589793238462643383279502884197169;
 
     const float n = 1.0003; // refractive index of air
@@ -211,7 +212,17 @@ float noise (in vec2 st) {
             (c - a)* u.y * (1.0 - u.x) +
             (d - b) * u.x * u.y;
 }
-
+    float wrap(float a){
+      return 1.0-(abs(a-0.5)*2.0);
+    }
+    float normalizePhi ( float phi ) {
+      return clamp(pow( phi /(pi*pi)*pi, pi*pi-2.0)*(1.0/(pi)), 0.0, 1.0);
+    }
+    float ca ( vec2 uv, float channel, float phi, float theta) {
+      uv.x = (normalizePhi(uv.x));
+      uv.y = wrap(uv.x);
+      return uv.x;//mix(uv.x, uv.y, 0.5);
+    }
     #define NUM_OCTAVES 5
     float fbm ( in vec2 uv, in float mag) {
       uv += u_time/400.0;
@@ -299,12 +310,9 @@ float noise (in vec2 st) {
 
     	vec3 retColor = pow( color, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) );
      vec2 st = gl_FragCoord.xy;
-        //vec3 colorR = vec3(0.0);
-        float colorR = fbm(uv*(pi*2.0), 1.0 );
-        //vec3 colorG = vec3(0.0);
-        float colorG = fbm(uv*(pi*2.0), 1.05 );
-       // vec3 colorB = vec3(0.0);
-        float colorB = fbm(uv*(pi*2.0), 1.1 );
+        float colorR = ca(uv, 0.0, phi, theta);
+        float colorG = ca(uv, 1.0, phi, theta);
+        float colorB = ca(uv, 2.0, phi, theta);
     
         gl_FragColor = vec4(colorR, colorG, colorB,1.0);
     //  float rndA = random( uv, 1.0);
