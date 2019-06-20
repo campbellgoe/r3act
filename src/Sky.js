@@ -215,13 +215,22 @@ float noise (in vec2 st) {
     float wrap(float a){
       return 1.0-(abs(a-0.5)*2.0);
     }
-    float normalizePhi ( float phi ) {
-      return clamp(pow( phi /(pi*pi)*pi, pi*pi-2.0)*(1.0/(pi)), 0.0, 1.0);
+    float normalizePhiStupidly ( float phi ) {
+      return pow( phi /(pi*pi)*pi, pi*pi-2.0)*(1.0/(pi));
+    }
+    float normalizePhi( float phi ) {
+      return sin(phi)/2.0+0.5;
+    }
+    float normalizeTheta( float theta ) {
+      return theta/pi;
     }
     float ca ( vec2 uv, float channel, float phi, float theta) {
-      uv.x = (normalizePhi(uv.x));
-      uv.y = wrap(uv.x);
-      return uv.x;//mix(uv.x, uv.y, 0.5);
+      float uy = normalizeTheta(theta);
+      float ux = normalizePhi(phi);
+      uy = sin(uy*pi*1.5+u_time/200.0)/2.0+0.5;
+      ux = sin(ux*pi+u_time/200.0)/2.0+0.5;
+      float d = ux*uy;
+      return d;
     }
     #define NUM_OCTAVES 5
     float fbm ( in vec2 uv, in float mag) {
