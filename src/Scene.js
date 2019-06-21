@@ -25,6 +25,7 @@ const importSimplifyModifier = () => {
 };
 const settings = {
   enableCameraShowcase: false,
+  skyUpdateStep: 5,
   load: {
     models: true,
     lights: true,
@@ -39,9 +40,9 @@ class Scene extends Component {
   scl = 3;
   //camera x,y,z offset
   o = {
-    x: 20,
-    y: 6,
-    z: 20,
+    x: 4 * this.scl,
+    y: 4 * this.scl,
+    z: 4 * this.scl,
   };
   //x, y, z, phi, theta, distance coords of the sun
   sun = null;
@@ -140,10 +141,11 @@ class Scene extends Component {
         */
   };
   setupScene = () => {
-    const { width, height, colours } = this;
+    const { width, height, colours, o } = this;
     const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
+    this.timeStart = Date.now();
     this.camera = camera;
-    camera.position.set(10, 10, 10);
+    camera.position.set(o.x, o.y, o.z);
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer = renderer;
     renderer.gammaOutput = true;
@@ -159,12 +161,6 @@ class Scene extends Component {
     //this.createAndSetupFog();
 
     this.loadAndSetupModels();
-    setInterval(() => {
-      if (typeof this.aziA == 'number') {
-        //console.log('elapsed', Date.now() - t0);
-        this.aziA += 1 / 16 / (60 * this.daynight.minutes); //e.g. 8 minutes for 1 day and night
-      }
-    }, 1000 / 16);
   };
   updateAmbientLightBrightness = (directBrightness, ambientBrightness) => {
     this.aLight.intensity = 0.3 * ambientBrightness;
@@ -327,6 +323,19 @@ class Scene extends Component {
   //   this.scene.fog = new THREE.Fog(fog.color, fog.near, fog.far);
   // }
   lods = [];
+  simplify = (modifier, mesh, amount = 0.5) => {
+    // var modifier = new SimplifyModifier();
+    var simplified = mesh.clone();
+    console.log('simplified', simplified);
+    simplified.material = mesh.material.clone();
+    simplified.material.flatShading = true;
+    var count = Math.floor(
+      simplified.geometry.attributes.position.count * amount
+    ); // number of vertices to remove
+    simplified.geometry = modifier.modify(simplified.geometry, count);
+    simplified.position.copy(mesh.position);
+    return simplified;
+  };
   loadAndSetupModels = () => {
     importSimplifyModifier().then(SimplifyModifier => {
       loadModels([{ type: 'gltf', model: treeGLTF }])
@@ -335,24 +344,12 @@ class Scene extends Component {
           console.log('obj', objOriginal);
           //objOriginal = objOriginal[0];
           const objs = [];
-          const simplify = (mesh, amount = 0.5) => {
-            var modifier = new SimplifyModifier();
-            var simplified = mesh.clone();
-            console.log('simplified', simplified);
-            simplified.material = mesh.material.clone();
-            simplified.material.flatShading = true;
-            var count = Math.floor(
-              simplified.geometry.attributes.position.count * amount
-            ); // number of vertices to remove
-            simplified.geometry = modifier.modify(simplified.geometry, count);
-            simplified.position.copy(mesh.position);
-            return simplified;
-          };
-          objOriginal.traverse(o => {
-            if (o.isMesh) {
-              o = simplify(o);
-            }
-          });
+          //TODO: why are there 2 t
+          // objOriginal.traverse(o => {
+          //   if (o.isMesh) {
+          //     o.geometry = this.simplify(o);
+          //   }
+          // });
           const simplified = objOriginal; //simplify(objOriginal);
           const pushObj = obj => {
             const newObj = obj || objOriginal.clone();
@@ -379,11 +376,24 @@ class Scene extends Component {
                 o.receiveShadow = true;
                 //TODO: will need a better way to determine what has alpha
                 if (o.name.includes('leaf')) {
+                  const r = 246 - Math.ceil(Math.random() * 140);
+                  const g = 256 - Math.ceil(Math.random() * 40);
+                  const b = 256 - Math.ceil(Math.random() * 90);
+                  o.material = new THREE.MeshLambertMaterial({
+                    alphaMap: o.material.alphaMap,
+                    map: o.material.map,
+                    alphaTest: 0.5,
+                    transparent: true,
+                    color: `rgb(${r},${g},${b})`,
+                    dithering: true,
+                  });
                   //this allows transparent textures such a tree leaves
-                  o.material.transparent = true;
+                  // o.material.transparent = true;
                   //this removes depth issues where leaves behind were blacked
                   //out behind leaves in front
-                  o.material.alphaTest = 0.5;
+                  // o.material.alphaTest = 0.5;
+
+                  //this allows casting alpha shadows
                   const customDepthMaterial = new THREE.MeshDepthMaterial({
                     depthPacking: THREE.RGBADepthPacking,
 
@@ -393,6 +403,10 @@ class Scene extends Component {
                   });
 
                   o.customDepthMaterial = customDepthMaterial;
+                } else if (o.name.includes('bark')) {
+                  o.material = new THREE.MeshLambertMaterial({
+                    map: o.material.map,
+                  });
                 }
               }
             });
@@ -407,7 +421,7 @@ class Scene extends Component {
               new THREE.MeshBasicMaterial(0xff0000)
             );
             //mesh.position.copy(obj.position);
-            lod.addLevel(mesh, 80);
+            lod.addLevel(mesh, 160);
             lod.position.set(pos.x, 0, pos.y);
             lod.rotation.y = yRot;
             //}
@@ -431,6 +445,10 @@ class Scene extends Component {
     this.scene = scene;
     this.setupScene();
     const controls = new OrbitControls(this.camera, this.renderer.domElement);
+    controls.maxPolarAngle = Math.PI * (1 / 3);
+    controls.minPolarAngle = Math.PI * (1 / 6);
+    controls.minDistance = 9 * this.scl;
+    controls.maxDistance = 32 * this.scl;
     //controls.addEventListener( 'change', render );
     this.cameraControls = controls;
 
@@ -622,13 +640,15 @@ class Scene extends Component {
     const enableCamShowcase = false;
     const cam = this.camera;
     const o = this.o;
+    cam.position.y = Math.max(o.y, cam.position.y);
     if (
       this.orientationControls &&
       this.orientationControls.deviceOrientation.type === 'deviceorientation'
     ) {
       this.orientationControls.update();
+    } else {
+      this.cameraControls.update();
     }
-    this.cameraControls.update();
     //const cube = this.cube;
     if (enableCamShowcase) {
       // cube.rotation.x += 0.01;
@@ -645,12 +665,14 @@ class Scene extends Component {
       this.helper.update();
     }
     if (
-      this.frame % 8 === 0 &&
+      this.frame % settings.skyUpdateStep === 0 &&
       settings.load.lights &&
       this.sky &&
       this.sunSphere
     ) {
       //console.log(this.aziA);
+      const timeSinceStart = (Date.now() - this.timeStart) / 1000 / (60 * 5);
+      this.aziA = timeSinceStart;
       let azi = this.aziA % 1;
       //between 0 and 1, where 1 is highest in the sky, and 0 is the horizon.
       this.aziHeight = Math.abs((azi % 0.5) - 0.25) * 4;
