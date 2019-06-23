@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
 import Resize from './Resize';
-import treeGLTF from './models/tree-1/scene.gltf';
+//import treeGLTF from './models/tree-1/scene.gltf';
 import {
   randomPositionInCircle,
   angularDistance,
@@ -11,6 +11,7 @@ import { getTouchesXY, mouseDownTypes } from './utils/input.js';
 import loadModels from './utils/loadModels.js';
 import Sky from './Sky';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+
 const importDeviceOrientationControls = () => {
   return import('three/examples/js/controls/DeviceOrientationControls.js').then(
     () => {
@@ -338,7 +339,10 @@ class Scene extends Component {
   };
   loadAndSetupModels = () => {
     importSimplifyModifier().then(SimplifyModifier => {
-      loadModels([{ type: 'gltf', model: treeGLTF }])
+      console.log(process.env.PUBLIC_URL);
+      //const treeModelPath = 'models/trees/palm3/palm0.fbx';
+      const treeModelPath = '/static/models/trees/palm_gltf/palm0.glb';
+      loadModels([{ type: 'gltf', model: treeModelPath }])
         .then(objOriginal => {
           objOriginal = objOriginal[0];
           console.log('obj', objOriginal);
@@ -366,7 +370,7 @@ class Scene extends Component {
             pushObj(simplified.clone());
           }
           objs.forEach(({ obj, pos, yRot }) => {
-            obj.scale.set(0.015 * this.scl, 0.015 * this.scl, 0.015 * this.scl);
+            obj.scale.set(this.scl * 0.25, this.scl * 0.25, this.scl * 0.25);
             obj.castShadow = true;
             obj.receiveShadow = true;
 
@@ -374,17 +378,18 @@ class Scene extends Component {
               if (o.isMesh) {
                 o.castShadow = true;
                 o.receiveShadow = true;
+                console.log('o', o);
+                console.log('o.name', o.name);
                 //TODO: will need a better way to determine what has alpha
-                if (o.name.includes('leaf')) {
+                if (!o.name.includes('leaf')) {
                   const r = 246 - Math.ceil(Math.random() * 140);
                   const g = 256 - Math.ceil(Math.random() * 40);
                   const b = 256 - Math.ceil(Math.random() * 90);
                   o.material = new THREE.MeshLambertMaterial({
-                    alphaMap: o.material.alphaMap,
                     map: o.material.map,
                     alphaTest: 0.5,
                     transparent: true,
-                    color: `rgb(${r},${g},${b})`,
+                    //color: `rgb(${r},${g},${b})`,
                     dithering: true,
                   });
                   //this allows transparent textures such a tree leaves
@@ -398,15 +403,14 @@ class Scene extends Component {
                     depthPacking: THREE.RGBADepthPacking,
 
                     map: o.material.map, // or, alphaMap: myAlphaMap
-
                     alphaTest: 0.5,
                   });
 
                   o.customDepthMaterial = customDepthMaterial;
                 } else if (o.name.includes('bark')) {
-                  o.material = new THREE.MeshLambertMaterial({
-                    map: o.material.map,
-                  });
+                  // o.material = new THREE.MeshLambertMaterial({
+                  //   map: o.material.map,
+                  // });
                 }
               }
             });
@@ -448,7 +452,7 @@ class Scene extends Component {
     controls.maxPolarAngle = Math.PI * (1 / 3);
     controls.minPolarAngle = Math.PI * (1 / 6);
     controls.minDistance = 9 * this.scl;
-    controls.maxDistance = 32 * this.scl;
+    controls.maxDistance = 64 * this.scl;
     //controls.addEventListener( 'change', render );
     this.cameraControls = controls;
 

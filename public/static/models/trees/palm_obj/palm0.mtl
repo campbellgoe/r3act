@@ -1,0 +1,12 @@
+newmtl palm02
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+map_Kd palm02.png
+
+newmtl date_palm_leaf
+Ka 1 1 1
+Kd 1 1 1
+Ks 0 0 0
+map_Kd date_palm_leaf.png
+
