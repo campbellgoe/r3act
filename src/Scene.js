@@ -11,6 +11,8 @@ import { getTouchesXY, mouseDownTypes } from './utils/input.js';
 import loadModels from './utils/loadModels.js';
 import Sky from './Sky';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import 'react-dat-gui/build/react-dat-gui.css';
+import DatGui, { DatNumber } from 'react-dat-gui';
 
 const importDeviceOrientationControls = () => {
   return import('three/examples/js/controls/DeviceOrientationControls.js').then(
@@ -24,19 +26,25 @@ const importSimplifyModifier = () => {
     return window.THREE.SimplifyModifier;
   });
 };
-const settings = {
-  enableCameraShowcase: false,
-  skyUpdateStep: 5,
-  load: {
-    models: true,
-    lights: true,
-    ground: true,
-  },
-  shadowHelper: true,
-};
+
 //import treeFBX from './models/tree-1-fbx/trees1.fbx';
 
 class Scene extends Component {
+  constructor() {
+    super();
+    this.state = {
+      settings: {
+        enableCameraShowcase: false,
+        skyUpdateStep: 5,
+        load: {
+          models: true,
+          lights: true,
+          ground: true,
+        },
+        shadowHelper: true,
+      },
+    };
+  }
   //scene scale
   scl = 3;
   //camera x,y,z offset
@@ -190,7 +198,7 @@ class Scene extends Component {
     this.createSky();
   };
   setupSkyLight = ({ x, y, z, distance }) => {
-    if (settings.load.lights) {
+    if (this.state.settings.load.lights) {
       const { scene, colours, brightness, renderer } = this;
       let maxTS = renderer.capabilities.maxTextureSize;
       if (maxTS >= 4096) {
@@ -289,7 +297,7 @@ class Scene extends Component {
           scene.add(dLight);
           scene.add(dLight.target);
           this.dLights[lightName] = dLight;
-          if (settings.shadowHelper) {
+          if (this.state.settings.shadowHelper) {
             const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
             scene.add(dLightHelper);
             this.dLightHelpers[lightName] = dLightHelper;
@@ -407,10 +415,10 @@ class Scene extends Component {
                   });
 
                   o.customDepthMaterial = customDepthMaterial;
-                } else if (o.name.includes('bark')) {
-                  // o.material = new THREE.MeshLambertMaterial({
-                  //   map: o.material.map,
-                  // });
+                } else {
+                  o.material = new THREE.MeshLambertMaterial({
+                    map: o.material.map,
+                  });
                 }
               }
             });
@@ -633,7 +641,7 @@ class Scene extends Component {
 
       dLight.shadow.camera.updateProjectionMatrix();
       //dLight.shadow.camera.updateProjectionMatrix();
-      if (settings.shadowHelper) {
+      if (this.state.settings.shadowHelper) {
         const dLightHelper = this.dLightHelpers[lightName];
         dLightHelper.update();
       }
@@ -669,8 +677,8 @@ class Scene extends Component {
       this.helper.update();
     }
     if (
-      this.frame % settings.skyUpdateStep === 0 &&
-      settings.load.lights &&
+      this.frame % this.state.settings.skyUpdateStep === 0 &&
+      this.state.settings.load.lights &&
       this.sky &&
       this.sunSphere
     ) {
@@ -760,8 +768,13 @@ class Scene extends Component {
   renderScene = () => {
     this.renderer.render(this.scene, this.camera);
   };
-
+  handleUpdate = settings => {
+    this.setState({
+      settings,
+    });
+  };
   render() {
+    const { settings } = this.state;
     return (
       <Resize>
         {({ width, height }) => {
@@ -775,12 +788,23 @@ class Scene extends Component {
             this.camera.updateProjectionMatrix();
           }
           return (
-            <div
-              style={{ width: '100%', height: '100%', position: 'fixed' }}
-              ref={mount => {
-                this.mount = mount;
-              }}
-            />
+            <>
+              <div
+                style={{ width: '100%', height: '100%', position: 'fixed' }}
+                ref={mount => {
+                  this.mount = mount;
+                }}
+              />
+              <DatGui data={settings} onUpdate={this.handleUpdate}>
+                <DatNumber
+                  path='skyUpdateStep'
+                  label='Shadow step'
+                  min={1}
+                  max={32}
+                  step={1}
+                />
+              </DatGui>
+            </>
           );
         }}
       </Resize>
