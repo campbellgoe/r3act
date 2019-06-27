@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import * as THREE from 'three';
 import Resize from './Resize';
-//import treeGLTF from './models/tree-1/scene.gltf';
+import tree3 from './models/tree-1/scene.gltf';
 import {
   randomPositionInCircle,
   angularDistance,
@@ -350,9 +350,12 @@ class Scene extends Component {
       console.log(process.env.PUBLIC_URL);
       //const treeModelPath = 'models/trees/palm3/palm0.fbx';
       const treeModelPath = '/static/models/trees/palm_gltf/palm0.glb';
-      loadModels([{ type: 'gltf', model: treeModelPath }])
-        .then(objOriginal => {
-          objOriginal = objOriginal[0];
+      loadModels([{ type: 'gltf', model: treeModelPath },
+        { type: 'gltf', model: tree3 }
+      ])
+        .then(([objHQ, objLQ]) => {
+          objLQ.scale.set(this.scl*0.05, this.scl*0.05, this.scl*0.05);
+          const objOriginal = objHQ;
           console.log('obj', objOriginal);
           //objOriginal = objOriginal[0];
           const objs = [];
@@ -433,7 +436,7 @@ class Scene extends Component {
               new THREE.MeshBasicMaterial(0xff0000)
             );
             //mesh.position.copy(obj.position);
-            lod.addLevel(mesh, 160);
+            lod.addLevel(objLQ.clone(), 160);
             lod.position.set(pos.x, 0, pos.y);
             lod.rotation.y = yRot;
             //}
