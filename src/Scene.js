@@ -12,7 +12,7 @@ import loadModels from './utils/loadModels.js';
 import Sky from './Sky';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import 'react-dat-gui/build/react-dat-gui.css';
-import DatGui, { DatNumber, DatBoolean } from 'react-dat-gui';
+import DatGui, { DatFolder, DatNumber, DatBoolean } from 'react-dat-gui';
 
 const importDeviceOrientationControls = () => {
   return import('three/examples/js/controls/DeviceOrientationControls.js').then(
@@ -809,19 +809,19 @@ class Scene extends Component {
                 }}
               />
               <DatGui data={settings} onUpdate={this.handleUpdate}>
-                <DatNumber
-                  path='skyUpdateStep'
-                  label='Shadow step'
-                  min={1}
-                  max={32}
-                  step={1}
-                />
-                {this.hasDeviceOrientation(this.orientationControls) && (
+                <DatFolder title='Settings'>
+                  <DatNumber
+                    path='skyUpdateStep'
+                    label='Shadow step'
+                    min={1}
+                    max={32}
+                    step={1}
+                  />
                   <DatBoolean
                     path='allowOrientationControls'
                     label='Orientation'
                   />
-                )}
+                </DatFolder>
               </DatGui>
             </>
           );
