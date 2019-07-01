@@ -12,7 +12,7 @@ import loadModels from './utils/loadModels.js';
 import Sky from './Sky';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import 'react-dat-gui/build/react-dat-gui.css';
-import DatGui, { DatNumber } from 'react-dat-gui';
+import DatGui, { DatNumber, DatBoolean } from 'react-dat-gui';
 
 const importDeviceOrientationControls = () => {
   return import('three/examples/js/controls/DeviceOrientationControls.js').then(
@@ -34,8 +34,9 @@ class Scene extends Component {
     super();
     this.state = {
       settings: {
+        allowOrientationControls: false,
         enableCameraShowcase: false,
-        skyUpdateStep: 5,
+        skyUpdateStep: 1,
         load: {
           models: true,
           lights: true,
@@ -213,7 +214,7 @@ class Scene extends Component {
       const dLightSettings = {
         colour: colours.sunlight,
         intensity: 5,
-        bias: 0.000008,
+        bias: 0.00008,
         far: distance * 2 * this.scl,
         castShadow: true,
         mapSize: maxTS,
@@ -346,78 +347,69 @@ class Scene extends Component {
     return simplified;
   };
   loadAndSetupModels = () => {
-    importSimplifyModifier().then(SimplifyModifier => {
-      console.log(process.env.PUBLIC_URL);
-      //const treeModelPath = 'models/trees/palm3/palm0.fbx';
-      const treeModelPath = '/static/models/trees/palm_gltf/palm0.glb';
-      loadModels([{ type: 'gltf', model: treeModelPath },
-        { type: 'gltf', model: tree3 }
-      ])
-        .then(([objHQ, objLQ]) => {
-          objLQ.scale.set(this.scl*0.05, this.scl*0.05, this.scl*0.05);
-          const objOriginal = objHQ;
-          console.log('obj', objOriginal);
-          //objOriginal = objOriginal[0];
-          const objs = [];
-          //TODO: why are there 2 t
-          // objOriginal.traverse(o => {
-          //   if (o.isMesh) {
-          //     o.geometry = this.simplify(o);
-          //   }
-          // });
-          const simplified = objOriginal; //simplify(objOriginal);
-          const pushObj = obj => {
-            const newObj = obj || objOriginal.clone();
-            const rndInCircle = randomPositionInCircle(200);
-            //newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
-            //newObj.rotation.y = Math.random() * Math.PI * 2;
-            const yRot = Math.random() * Math.PI * 2;
-            objs.push({ obj: newObj, pos: rndInCircle, yRot });
-          };
-          pushObj(simplified);
-          for (let i = 0; i < 100; i++) {
-            //var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
-            //var mesh = new THREE.Mesh(geometry, obj.material);
-            pushObj(simplified.clone());
-          }
-          objs.forEach(({ obj, pos, yRot }) => {
-            obj.scale.set(this.scl * 0.25, this.scl * 0.25, this.scl * 0.25);
-            obj.castShadow = true;
-            obj.receiveShadow = true;
-
-            obj.traverse(o => {
+    //importSimplifyModifier().then(SimplifyModifier => {
+    //console.log(process.env.PUBLIC_URL);
+    //const treeModelPath = 'models/trees/palm3/palm0.fbx';
+    const palmHQ = '/static/models/trees/palm_gltf/palm0.glb';
+    const palmLQ = '/static/models/trees/palm_gltf/palm0_LQ.glb';
+    loadModels([
+      { type: 'gltf', model: palmHQ },
+      { type: 'gltf', model: palmLQ },
+    ])
+      .then(([objHQ, objLQ]) => {
+        //define which objs have alphaShadows
+        const objs = [
+          {
+            lodDistance: 0,
+            obj: objHQ,
+            alphaShadows: true,
+          },
+          {
+            lodDistance: 400,
+            obj: objLQ,
+            alphaShadows: true,
+          },
+        ];
+        //create 100 clones for the objects, with the high and low quality
+        //objects
+        for (let i = 0; i < 1200; i++) {
+          const pos = randomPositionInCircle(1000);
+          //newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
+          //newObj.rotation.y = Math.random() * Math.PI * 2;
+          const yRot = Math.random() * Math.PI * 2;
+          const lod = new THREE.LOD();
+          lod.position.set(pos.x, 0, pos.y);
+          lod.rotation.y = yRot;
+          const r = 246 - Math.ceil(Math.random() * 60);
+          const g = 256 - Math.ceil(Math.random() * 10);
+          const b = 256 - Math.ceil(Math.random() * 120);
+          //Create spheres with 3 levels of detail and create new LOD levels for them
+          //for (var i = 0; i < 3; i++) {
+          objs.forEach(({ obj, lodDistance, alphaShadows }) => {
+            const myObj = obj.clone();
+            myObj.traverse(o => {
               if (o.isMesh) {
                 o.castShadow = true;
                 o.receiveShadow = true;
-                console.log('o', o);
-                console.log('o.name', o.name);
-                //TODO: will need a better way to determine what has alpha
-                if (!o.name.includes('leaf')) {
-                  const r = 246 - Math.ceil(Math.random() * 140);
-                  const g = 256 - Math.ceil(Math.random() * 40);
-                  const b = 256 - Math.ceil(Math.random() * 90);
+                if (o.material.name.includes('leaf')) {
+                  //set the correct material for leaf textures
+                  //including transparency, and a random base colour
+
                   o.material = new THREE.MeshLambertMaterial({
                     map: o.material.map,
                     alphaTest: 0.5,
                     transparent: true,
-                    //color: `rgb(${r},${g},${b})`,
+                    color: `rgb(${r},${g},${b})`,
                     dithering: true,
                   });
-                  //this allows transparent textures such a tree leaves
-                  // o.material.transparent = true;
-                  //this removes depth issues where leaves behind were blacked
-                  //out behind leaves in front
-                  // o.material.alphaTest = 0.5;
-
-                  //this allows casting alpha shadows
-                  const customDepthMaterial = new THREE.MeshDepthMaterial({
-                    depthPacking: THREE.RGBADepthPacking,
-
-                    map: o.material.map, // or, alphaMap: myAlphaMap
-                    alphaTest: 0.5,
-                  });
-
-                  o.customDepthMaterial = customDepthMaterial;
+                  if (alphaShadows) {
+                    const customDepthMaterial = new THREE.MeshDepthMaterial({
+                      depthPacking: THREE.RGBADepthPacking,
+                      map: o.material.map,
+                      alphaTest: 0.5,
+                    });
+                    o.customDepthMaterial = customDepthMaterial;
+                  }
                 } else {
                   o.material = new THREE.MeshLambertMaterial({
                     map: o.material.map,
@@ -425,31 +417,43 @@ class Scene extends Component {
                 }
               }
             });
-            var lod = new THREE.LOD();
-            //Create spheres with 3 levels of detail and create new LOD levels for them
-            //for (var i = 0; i < 3; i++) {
-            lod.addLevel(obj, 0);
-            var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
-
-            var mesh = new THREE.Mesh(
-              geometry,
-              new THREE.MeshBasicMaterial(0xff0000)
-            );
-            //mesh.position.copy(obj.position);
-            lod.addLevel(objLQ.clone(), 160);
-            lod.position.set(pos.x, 0, pos.y);
-            lod.rotation.y = yRot;
-            //}
-            this.lods.push(lod);
-
-            this.scene.add(lod);
-            //this.scene.add(obj);
+            lod.addLevel(myObj, lodDistance);
           });
-        })
-        .catch(err => {
-          console.error('error loading models', err);
-        });
-    });
+
+          // var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
+
+          // var mesh = new THREE.Mesh(
+          //   geometry,
+          //   new THREE.MeshBasicMaterial(0xff0000)
+          // );
+          //mesh.position.copy(obj.position);
+
+          //}
+          this.lods.push(lod);
+
+          this.scene.add(lod);
+        }
+        //create 101 trees (1 original, 100 cloned)
+        //give random positions in circles with random rotation for the 100
+        //for each tree, give it shadows and correct materials
+
+        //objLQ.scale.set(this.scl * 0.05, this.scl * 0.05, this.scl * 0.05);
+        //const objOriginal = objHQ;
+        //console.log('obj', objOriginal);
+        //objOriginal = objOriginal[0];
+        //const objs = [];
+        //TODO: why are there 2 t
+        // objOriginal.traverse(o => {
+        //   if (o.isMesh) {
+        //     o.geometry = this.simplify(o);
+        //   }
+        // });
+        //const simplified = objOriginal; //simplify(objOriginal);
+      })
+      .catch(err => {
+        console.error('error loading models', err);
+      });
+    //});
   };
   componentDidMount() {
     window.THREE = THREE;
@@ -460,13 +464,13 @@ class Scene extends Component {
     this.scene = scene;
     this.setupScene();
     const controls = new OrbitControls(this.camera, this.renderer.domElement);
-    controls.maxPolarAngle = Math.PI * (1 / 3);
-    controls.minPolarAngle = Math.PI * (1 / 6);
-    controls.minDistance = 9 * this.scl;
-    controls.maxDistance = 64 * this.scl;
+    controls.maxPolarAngle = Math.PI * (1 / 4);
+    controls.minPolarAngle = Math.PI * (1 / 8);
+    controls.minDistance = 10 * this.scl;
+    controls.maxDistance = 128 * this.scl;
     //controls.addEventListener( 'change', render );
     this.cameraControls = controls;
-
+    //if(this.state.settings.enable)
     if (window.DeviceOrientationEvent) {
       importDeviceOrientationControls().then(DeviceOrientationControls => {
         const controls = new DeviceOrientationControls(this.camera);
@@ -545,10 +549,11 @@ class Scene extends Component {
       }
 
       /* set shadow size based on camera y position */
-      const cy = 30; //Math.min(10, Math.max(0.5, camera.position.y / 20));
+      const cy = 80; //Math.min(10, Math.max(0.5, camera.position.y / 20));
       const cz = Math.max(1, distXYCamToShadow / rayDistance + 0.5);
       //set shadow size based on dist to shadow center
-      const cw = Math.max(1, distCamToShadow / (rayDistanceActual / 2));
+      const cw = Math.max(1, distCamToShadow / rayDistanceActual);
+      console.log('cw', cw);
       const c = Math.min(1000 * this.scl, cy * cz * cw * this.scl);
       const cl = 4;
       const cr = 4;
@@ -650,6 +655,9 @@ class Scene extends Component {
       }
     }
   };
+  hasDeviceOrientation = oc => {
+    return oc && oc.deviceOrientation.type === 'deviceorientation';
+  };
   animate = ms => {
     ms = Math.round(ms / 10);
     const enableCamShowcase = false;
@@ -657,8 +665,8 @@ class Scene extends Component {
     const o = this.o;
     cam.position.y = Math.max(o.y, cam.position.y);
     if (
-      this.orientationControls &&
-      this.orientationControls.deviceOrientation.type === 'deviceorientation'
+      this.state.settings.allowOrientationControls &&
+      this.hasDeviceOrientation(this.orientationControls)
     ) {
       this.orientationControls.update();
     } else {
@@ -755,6 +763,8 @@ class Scene extends Component {
         this.updateAmbientLightBrightness(this.brightness, this.ambiBrightness);
       }
     }
+    //TODO: remove this, as it should automatically update in future THREE.js
+    //versions.
     this.lods.forEach(lod => {
       lod.update(this.camera);
     });
@@ -806,6 +816,18 @@ class Scene extends Component {
                   max={32}
                   step={1}
                 />
+                {this.hasDeviceOrientation(this.orientationControls) && (
+                  <DatBoolean
+                    onClick={() => {
+                      this.setState({
+                        settings: {
+                          allowOrientationControls: !this.state.settings
+                            .allowOrientationControls,
+                        },
+                      });
+                    }}
+                  />
+                )}
               </DatGui>
             </>
           );
