@@ -365,7 +365,7 @@ class Scene extends Component {
             alphaShadows: true,
           },
           {
-            lodDistance: 400,
+            lodDistance: 80,
             obj: objLQ,
             alphaShadows: true,
           },
