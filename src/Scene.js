@@ -372,8 +372,8 @@ class Scene extends Component {
         ];
         //create 100 clones for the objects, with the high and low quality
         //objects
-        for (let i = 0; i < 1200; i++) {
-          const pos = randomPositionInCircle(1000);
+        for (let i = 0; i < 3000; i++) {
+          const pos = randomPositionInCircle(3000);
           //newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
           //newObj.rotation.y = Math.random() * Math.PI * 2;
           const yRot = Math.random() * Math.PI * 2;
@@ -552,8 +552,8 @@ class Scene extends Component {
       const cy = 80; //Math.min(10, Math.max(0.5, camera.position.y / 20));
       const cz = Math.max(1, distXYCamToShadow / rayDistance + 0.5);
       //set shadow size based on dist to shadow center
-      const cw = Math.max(1, distCamToShadow / rayDistanceActual);
-      console.log('cw', cw);
+      const cw = Math.max(1, distCamToShadow / (rayDistanceActual * 1.5));
+      //console.log('cw', cw);
       const c = Math.min(1000 * this.scl, cy * cz * cw * this.scl);
       const cl = 4;
       const cr = 4;
