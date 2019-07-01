@@ -818,14 +818,8 @@ class Scene extends Component {
                 />
                 {this.hasDeviceOrientation(this.orientationControls) && (
                   <DatBoolean
-                    onClick={() => {
-                      this.setState({
-                        settings: {
-                          allowOrientationControls: !this.state.settings
-                            .allowOrientationControls,
-                        },
-                      });
-                    }}
+                    path='allowOrientationControls'
+                    label='Orientation'
                   />
                 )}
               </DatGui>
