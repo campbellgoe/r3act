@@ -350,26 +350,35 @@ class Scene extends Component {
     //importSimplifyModifier().then(SimplifyModifier => {
     //console.log(process.env.PUBLIC_URL);
     //const treeModelPath = 'models/trees/palm3/palm0.fbx';
-    const palmHQ = '/static/models/trees/palm_gltf/palm0.glb';
-    const palmLQ = '/static/models/trees/palm_gltf/palm0_LQ.glb';
-    loadModels([
-      { type: 'gltf', model: palmHQ },
-      { type: 'gltf', model: palmLQ },
-    ])
-      .then(([objHQ, objLQ]) => {
-        //define which objs have alphaShadows
-        const objs = [
-          {
-            lodDistance: 0,
-            obj: objHQ,
-            alphaShadows: true,
-          },
-          {
-            lodDistance: 80,
-            obj: objLQ,
-            alphaShadows: true,
-          },
-        ];
+    /*const palmHQ = '/static/models/trees/palm_gltf/palm0.glb';
+    const palmLQ = '/static/models/trees/palm_gltf/palm0_LQ.glb';*/
+    //const palmHQ = '/static/models/trees/palm00_fbx/palm00_hq.fbx';
+    //const palmLQ = '/static/models/trees/palm00_fbx/palm00_lq.fbx';
+    const modelsToLoad = [
+      {
+        path: '/static/models/trees/palm00/gltf/palm00_hq.gltf',
+        lodDistance: 0,
+        alphaShadows: true,
+        quality: 100,
+        alphaTest: 0.3,
+      },
+      {
+        path: '/static/models/trees/palm00/gltf/palm00_mq.gltf',
+        lodDistance: 300,
+        alphaShadows: true,
+        quality: 50,
+        alphaTest: 0.3,
+      },
+      {
+        path: '/static/models/trees/palm00/gltf/palm00_lq.gltf',
+        lodDistance: 600,
+        alphaShadows: false,
+        quality: 25,
+        alphaTest: 0.3,
+      },
+    ];
+    loadModels(modelsToLoad)
+      .then(objs => {
         //create 100 clones for the objects, with the high and low quality
         //objects
         for (let i = 0; i < 3000; i++) {
@@ -385,40 +394,42 @@ class Scene extends Component {
           const b = 256 - Math.ceil(Math.random() * 120);
           //Create spheres with 3 levels of detail and create new LOD levels for them
           //for (var i = 0; i < 3; i++) {
-          objs.forEach(({ obj, lodDistance, alphaShadows }) => {
-            const myObj = obj.clone();
-            myObj.traverse(o => {
-              if (o.isMesh) {
-                o.castShadow = true;
-                o.receiveShadow = true;
-                if (o.material.name.includes('leaf')) {
-                  //set the correct material for leaf textures
-                  //including transparency, and a random base colour
+          objs.forEach(
+            ({ model, lodDistance, alphaShadows, alphaTest = 0.33 }) => {
+              const myObj = model.clone();
+              myObj.traverse(o => {
+                if (o.isMesh) {
+                  o.castShadow = true;
+                  o.receiveShadow = true;
+                  if (o.material.name.includes('leaf')) {
+                    //set the correct material for leaf textures
+                    //including transparency, and a random base colour
 
-                  o.material = new THREE.MeshLambertMaterial({
-                    map: o.material.map,
-                    alphaTest: 0.5,
-                    transparent: true,
-                    color: `rgb(${r},${g},${b})`,
-                    dithering: true,
-                  });
-                  if (alphaShadows) {
-                    const customDepthMaterial = new THREE.MeshDepthMaterial({
-                      depthPacking: THREE.RGBADepthPacking,
+                    o.material = new THREE.MeshLambertMaterial({
                       map: o.material.map,
-                      alphaTest: 0.5,
+                      alphaTest,
+                      transparent: true,
+                      color: `rgb(${r},${g},${b})`,
+                      dithering: true,
                     });
-                    o.customDepthMaterial = customDepthMaterial;
+                    if (alphaShadows) {
+                      const customDepthMaterial = new THREE.MeshDepthMaterial({
+                        depthPacking: THREE.RGBADepthPacking,
+                        map: o.material.map,
+                        alphaTest,
+                      });
+                      o.customDepthMaterial = customDepthMaterial;
+                    }
+                  } else {
+                    o.material = new THREE.MeshLambertMaterial({
+                      map: o.material.map,
+                    });
                   }
-                } else {
-                  o.material = new THREE.MeshLambertMaterial({
-                    map: o.material.map,
-                  });
                 }
-              }
-            });
-            lod.addLevel(myObj, lodDistance);
-          });
+              });
+              lod.addLevel(myObj, lodDistance);
+            }
+          );
 
           // var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
 
