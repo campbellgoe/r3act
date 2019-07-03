@@ -12,7 +12,12 @@ import loadModels from './utils/loadModels.js';
 import Sky from './Sky';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import 'react-dat-gui/build/react-dat-gui.css';
-import DatGui, { DatFolder, DatNumber, DatBoolean } from 'react-dat-gui';
+import DatGui, {
+  DatFolder,
+  DatNumber,
+  DatBoolean,
+  //DatButton,
+} from 'react-dat-gui';
 
 const importDeviceOrientationControls = () => {
   return import('three/examples/js/controls/DeviceOrientationControls.js').then(
@@ -34,7 +39,11 @@ class Scene extends Component {
     super();
     this.state = {
       settings: {
-        minutesPerDay: 0.5,
+        ambientLightIntensity: 1,
+        dayOffset: 0.95,
+        numTrees: 2200,
+        treesSpawnRadius: 2500,
+        minutesPerDay: 0.75,
         allowOrientationControls: false,
         enableCameraShowcase: false,
         skyUpdateStep: 1,
@@ -215,7 +224,7 @@ class Scene extends Component {
       const dLightSettings = {
         colour: colours.sunlight,
         intensity: 5,
-        bias: 0.0001,
+        bias: 0.000001,
         far: distance * 2 * this.scl,
         castShadow: true,
         mapSize: maxTS,
@@ -373,7 +382,7 @@ class Scene extends Component {
       {
         path: '/static/models/trees/palm00/gltf/palm00_lq.gltf',
         lodDistance: 600,
-        alphaShadows: false,
+        alphaShadows: true,
         quality: 25,
         alphaTest: 0.3,
       },
@@ -382,16 +391,20 @@ class Scene extends Component {
       .then(objs => {
         //create 100 clones for the objects, with the high and low quality
         //objects
-        for (let i = 0; i < 3000; i++) {
-          const pos = randomPositionInCircle(3000);
+        for (let i = 0; i < this.state.settings.numTrees; i++) {
+          const pos = randomPositionInCircle(
+            this.state.settings.treesSpawnRadius
+          );
           //newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
           //newObj.rotation.y = Math.random() * Math.PI * 2;
           const yRot = Math.random() * Math.PI * 2;
           const lod = new THREE.LOD();
           lod.position.set(pos.x, 0, pos.y);
           lod.rotation.y = yRot;
-          const r = 246 - Math.ceil(Math.random() * 60);
-          const g = 256 - Math.ceil(Math.random() * 10);
+          const scale = 1 + Math.random() * 0.3 - 0.15;
+          lod.scale.set(scale, scale, scale);
+          const r = 246 - Math.ceil(Math.random() * 120);
+          const g = 256 - Math.ceil(Math.random() * 50);
           const b = 256 - Math.ceil(Math.random() * 120);
           //Create spheres with 3 levels of detail and create new LOD levels for them
           //for (var i = 0; i < 3; i++) {
@@ -424,6 +437,7 @@ class Scene extends Component {
                   } else {
                     o.material = new THREE.MeshLambertMaterial({
                       map: o.material.map,
+                      color: `rgb(${g},${g},${g})`,
                     });
                   }
                 }
@@ -707,9 +721,15 @@ class Scene extends Component {
     ) {
       //console.log(this.aziA);
       const timeSinceStart =
-        (Date.now() - this.timeStart) /
+        (Date.now() +
+          1000 *
+            60 *
+            this.state.settings.minutesPerDay *
+            2 *
+            this.state.settings.dayOffset -
+          this.timeStart) /
         1000 /
-        (60 * this.state.settings.minutesPerDay);
+        (60 * (this.state.settings.minutesPerDay * 2));
       this.aziA = timeSinceStart;
       let azi = this.aziA % 1;
       //between 0 and 1, where 1 is highest in the sky, and 0 is the horizon.
@@ -751,13 +771,14 @@ class Scene extends Component {
       //update ambient light based on aziHeight
 
       this.aziBrightness = 1 - this.aziHeight ** 4;
-      let threshold = 0.43;
+      let threshold = 0.4;
       // this.ambiBrightness =
       //   azi > 0.5 + threshold && azi < 1 - threshold
       //     ? 0
       //     : (1 - Math.abs(0.5 - ((azi + threshold) % 1) / 0.65) - 0.5) * 2;
       this.ambiBrightness =
-        (Math.sin(azi * Math.PI * 2) + threshold) / (1 + threshold);
+        ((Math.sin(azi * Math.PI * 2) + threshold) / (1 + threshold)) *
+        this.state.settings.ambientLightIntensity;
       console.log('ambi', this.ambiBrightness);
       //Math.abs((azi % 0.5) - 0.25) * 4;
       //if (this.frame % 2 === 0) console.log(this.ambiBrightness);
@@ -832,8 +853,29 @@ class Scene extends Component {
                     path='skyUpdateStep'
                     label='Shadow step'
                     min={1}
-                    max={32}
+                    max={64}
                     step={1}
+                  />
+                  <DatNumber
+                    path='minutesPerDay'
+                    label='min/day'
+                    min={0.1}
+                    max={60 * 24}
+                    step={0.1}
+                  />
+                  <DatNumber
+                    path='dayOffset'
+                    label='Day offset'
+                    min={0}
+                    max={1}
+                    step={0.01}
+                  />
+                  <DatNumber
+                    path='ambientLightIntensity'
+                    label='Ambient light'
+                    min={0.25}
+                    max={3}
+                    step={0.25}
                   />
                   <DatBoolean
                     path='allowOrientationControls'
@@ -849,4 +891,12 @@ class Scene extends Component {
   }
 }
 
+/*<DatFolder title='Trees'>
+                    <DatButton
+                      label='Apply changes'
+                      onClick={() => {
+                        this.loadAndSetupModels();
+                      }}
+                    />
+                  </DatFolder>*/
 export default Scene;
