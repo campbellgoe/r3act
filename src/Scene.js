@@ -34,6 +34,7 @@ class Scene extends Component {
     super();
     this.state = {
       settings: {
+        minutesPerDay: 0.5,
         allowOrientationControls: false,
         enableCameraShowcase: false,
         skyUpdateStep: 1,
@@ -214,7 +215,7 @@ class Scene extends Component {
       const dLightSettings = {
         colour: colours.sunlight,
         intensity: 5,
-        bias: 0.00008,
+        bias: 0.0001,
         far: distance * 2 * this.scl,
         castShadow: true,
         mapSize: maxTS,
@@ -475,7 +476,7 @@ class Scene extends Component {
     this.scene = scene;
     this.setupScene();
     const controls = new OrbitControls(this.camera, this.renderer.domElement);
-    controls.maxPolarAngle = Math.PI * (1 / 4);
+    controls.maxPolarAngle = Math.PI * (1 / 2); //(1 / 4);
     controls.minPolarAngle = Math.PI * (1 / 8);
     controls.minDistance = 10 * this.scl;
     controls.maxDistance = 128 * this.scl;
@@ -509,7 +510,7 @@ class Scene extends Component {
   frame = 0;
   //azimuth angle starting value
   //<0.0 and 0.5> means sun below horizon, 0.25 means sun at peak height in sky.
-  aziA = 0.1;
+  aziA = 0;
   t0 = 0;
   daynight = {
     minutes: 5,
@@ -705,7 +706,10 @@ class Scene extends Component {
       this.sunSphere
     ) {
       //console.log(this.aziA);
-      const timeSinceStart = (Date.now() - this.timeStart) / 1000 / (60 * 5);
+      const timeSinceStart =
+        (Date.now() - this.timeStart) /
+        1000 /
+        (60 * this.state.settings.minutesPerDay);
       this.aziA = timeSinceStart;
       let azi = this.aziA % 1;
       //between 0 and 1, where 1 is highest in the sky, and 0 is the horizon.
@@ -747,11 +751,14 @@ class Scene extends Component {
       //update ambient light based on aziHeight
 
       this.aziBrightness = 1 - this.aziHeight ** 4;
-      let threshold = 0.07;
+      let threshold = 0.43;
+      // this.ambiBrightness =
+      //   azi > 0.5 + threshold && azi < 1 - threshold
+      //     ? 0
+      //     : (1 - Math.abs(0.5 - ((azi + threshold) % 1) / 0.65) - 0.5) * 2;
       this.ambiBrightness =
-        azi > 0.5 + threshold && azi < 1 - threshold
-          ? 0
-          : (1 - Math.abs(0.5 - ((azi + threshold) % 1) / 0.65) - 0.5) * 2;
+        (Math.sin(azi * Math.PI * 2) + threshold) / (1 + threshold);
+      console.log('ambi', this.ambiBrightness);
       //Math.abs((azi % 0.5) - 0.25) * 4;
       //if (this.frame % 2 === 0) console.log(this.ambiBrightness);
       this.brightness = this.aziBrightness;
