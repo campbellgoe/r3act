@@ -675,9 +675,11 @@ class Scene extends Component {
 
       dLight.shadow.camera.updateProjectionMatrix();
       //dLight.shadow.camera.updateProjectionMatrix();
+      const dLightHelper = this.dLightHelpers[lightName];
       if (this.state.settings.shadowHelper) {
-        const dLightHelper = this.dLightHelpers[lightName];
         dLightHelper.update();
+      } else {
+      	dLightHelper.visible = false;
       }
     }
   };
@@ -880,6 +882,10 @@ class Scene extends Component {
                   <DatBoolean
                     path='allowOrientationControls'
                     label='Orientation'
+                  />
+                  <DatBoolean
+                    path='shadowHelper'
+                    label='Shadow helper'
                   />
                 </DatFolder>
               </DatGui>
