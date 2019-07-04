@@ -39,11 +39,13 @@ class Scene extends Component {
     super();
     this.state = {
       settings: {
+        shadowFalloff: 2,
+        shadowScale: 1,
         ambientLightIntensity: 1,
-        dayOffset: 0.95,
+        dayOffset: 0.12,
         numTrees: 2200,
         treesSpawnRadius: 2500,
-        minutesPerDay: 0.75,
+        minutesPerDay: 8,
         allowOrientationControls: false,
         enableCameraShowcase: false,
         skyUpdateStep: 1,
@@ -211,7 +213,7 @@ class Scene extends Component {
   setupSkyLight = ({ x, y, z, distance }) => {
     if (this.state.settings.load.lights) {
       const { scene, colours, brightness, renderer } = this;
-      let maxTS = renderer.capabilities.maxTextureSize;
+      let maxTS = renderer.capabilities.maxTextureSize || 512;
       if (maxTS >= 4096) {
         maxTS = 4096;
       } else if (maxTS >= 2048) {
@@ -576,11 +578,28 @@ class Scene extends Component {
 
       /* set shadow size based on camera y position */
       const cy = 80; //Math.min(10, Math.max(0.5, camera.position.y / 20));
-      const cz = Math.max(1, distXYCamToShadow / rayDistance + 0.5);
+      const cz = Math.max(1, distXYCamToShadow / rayDistance);
       //set shadow size based on dist to shadow center
       const cw = Math.max(1, distCamToShadow / (rayDistanceActual * 1.5));
       //console.log('cw', cw);
-      const c = Math.min(1000 * this.scl, cy * cz * cw * this.scl);
+      const c = Math.max(
+        1,
+        Math.min(
+          1000 * this.scl,
+          cy *
+            cz *
+            cw *
+            this.scl *
+            (1 /
+              Math.pow(
+                Math.abs(
+                  this.camera.rotation.x * this.state.settings.shadowScale
+                ),
+                this.state.settings.shadowFalloff
+              ))
+        )
+      );
+      console.log('c', c);
       const cl = 4;
       const cr = 4;
       const ct = 4;
@@ -679,7 +698,7 @@ class Scene extends Component {
       if (this.state.settings.shadowHelper) {
         dLightHelper.update();
       } else {
-      	dLightHelper.visible = false;
+        dLightHelper.visible = false;
       }
     }
   };
@@ -781,7 +800,6 @@ class Scene extends Component {
       this.ambiBrightness =
         ((Math.sin(azi * Math.PI * 2) + threshold) / (1 + threshold)) *
         this.state.settings.ambientLightIntensity;
-      console.log('ambi', this.ambiBrightness);
       //Math.abs((azi % 0.5) - 0.25) * 4;
       //if (this.frame % 2 === 0) console.log(this.ambiBrightness);
       this.brightness = this.aziBrightness;
@@ -852,6 +870,20 @@ class Scene extends Component {
               <DatGui data={settings} onUpdate={this.handleUpdate}>
                 <DatFolder title='Settings'>
                   <DatNumber
+                    path='shadowScale'
+                    label='Shadow scale'
+                    min={0.1}
+                    max={2}
+                    step={0.01}
+                  />
+                  <DatNumber
+                    path='shadowFalloff'
+                    label='Shadow falloff'
+                    min={0.1}
+                    max={8}
+                    step={0.01}
+                  />
+                  <DatNumber
                     path='skyUpdateStep'
                     label='Shadow step'
                     min={1}
@@ -883,10 +915,7 @@ class Scene extends Component {
                     path='allowOrientationControls'
                     label='Orientation'
                   />
-                  <DatBoolean
-                    path='shadowHelper'
-                    label='Shadow helper'
-                  />
+                  <DatBoolean path='shadowHelper' label='Shadow helper' />
                 </DatFolder>
               </DatGui>
             </>
