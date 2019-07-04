@@ -39,8 +39,8 @@ class Scene extends Component {
     super();
     this.state = {
       settings: {
-        shadowFalloff: 2,
-        shadowScale: 1,
+        shadowFalloff: 3.8,
+        shadowScale: 1.13,
         ambientLightIntensity: 1,
         dayOffset: 0.12,
         numTrees: 2200,
