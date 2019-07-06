@@ -52,7 +52,7 @@ class Scene extends Component {
       this.state.settings = this.ld;
     }
     const stats = new Stats();
-    stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+    stats.showPanel(1); // 0: fps, 1: ms, 2: mb, 3+: custom
     document.body.appendChild(stats.dom);
     this.stats = stats;
   }
@@ -545,10 +545,13 @@ class Scene extends Component {
           //newObj.rotation.y = Math.random() * Math.PI * 2;
           const yRot = Math.random() * Math.PI * 2;
           const lod = new THREE.LOD();
-          lod.position.set(pos.x, lodYOffset, pos.y);
-          lod.rotation.y = yRot;
-          const scale = 1 + Math.random() * 0.3 - 0.15;
+
+          const scale = 1 + Math.random() * 0.6 - 0.3;
           lod.scale.set(scale, scale, scale);
+          //scale yOffset too so it is correctly offset off the ground
+          lod.position.set(pos.x, lodYOffset * scale, pos.y);
+          lod.rotation.y = yRot;
+
           const r = 246 - Math.ceil(Math.random() * 120);
           const g = 256 - Math.ceil(Math.random() * 50);
           const b = 256 - Math.ceil(Math.random() * 120);
