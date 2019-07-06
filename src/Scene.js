@@ -57,6 +57,15 @@ class Scene extends Component {
         shadowHelper: true,
       },
     };
+    //if has local data, load it and save in state.settings.
+    //else save state into local data.
+    this.ld = this.loadLocalData();
+        if(!this.ld.initialized){
+            this.ld = {...this.state.settings, initialized: true};
+            this.saveLocalData(this.ld);
+        } else {
+            this.state.settings = this.ld;
+        }
   }
   //scene scale
   scl = 3;
@@ -310,11 +319,11 @@ class Scene extends Component {
           scene.add(dLight);
           scene.add(dLight.target);
           this.dLights[lightName] = dLight;
-          if (this.state.settings.shadowHelper) {
+         // if (this.state.settings.shadowHelper) {
             const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
             scene.add(dLightHelper);
             this.dLightHelpers[lightName] = dLightHelper;
-          }
+         // }
         }
       };
       createDLights(dLights);
@@ -547,6 +556,24 @@ class Scene extends Component {
       });
     //});
   };
+  loadLocalData(){
+    let ld = localStorage.getItem('r3act_data');
+    if(ld === null){
+    	ld = {};
+    	return ld;
+    }
+    try {
+      ld = JSON.parse(ld); 	
+    } catch(err) {
+    	console.error(err);
+    	ld = {};
+    }
+    return ld;
+  }
+  saveLocalData(ld){
+  	localStorage.setItem('r3act_data', JSON.stringify(ld));
+  }
+  ld = {};
   componentDidMount() {
     window.THREE = THREE;
     this.width = window.innerWidth;
@@ -760,6 +787,7 @@ class Scene extends Component {
       //dLight.shadow.camera.updateProjectionMatrix();
       const dLightHelper = this.dLightHelpers[lightName];
       if (this.state.settings.shadowHelper) {
+        if(!dLightHelper.visible) dLightHelper.visible = true; 
         dLightHelper.update();
       } else {
         dLightHelper.visible = false;
@@ -912,6 +940,9 @@ class Scene extends Component {
   handleUpdate = settings => {
     this.setState({
       settings,
+    }, ()=>{
+    	this.ld = {...this.state.settings, initialized: true};
+    	            this.saveLocalData(this.ld);
     });
   };
   render() {
