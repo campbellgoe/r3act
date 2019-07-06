@@ -43,8 +43,8 @@ class Scene extends Component {
         shadowScale: 1.13,
         ambientLightIntensity: 1,
         dayOffset: 0.12,
-        numTrees: 2200,
-        treesSpawnRadius: 2500,
+        numTrees: 1,
+        treesSpawnRadius: 100,
         minutesPerDay: 8,
         allowOrientationControls: false,
         enableCameraShowcase: false,
@@ -52,7 +52,8 @@ class Scene extends Component {
         load: {
           models: true,
           lights: true,
-          ground: true,
+          ground: false,
+          sky: false,
         },
         shadowHelper: true,
       },
@@ -164,21 +165,31 @@ class Scene extends Component {
   };
   setupScene = () => {
     const { width, height, colours, o } = this;
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
+    //const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
+    const camera = new THREE.OrthographicCamera(
+      -width * 0.2,
+      width * 0.2,
+      height * 0.2,
+      -height * 0.2,
+      0.00001,
+      5000000
+    );
     this.timeStart = Date.now();
     this.camera = camera;
     camera.position.set(o.x, o.y, o.z);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer = renderer;
     renderer.gammaOutput = true;
     renderer.gammaFactor = 2.2;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.setClearColor(colours.sky);
+    //renderer.setClearColor('rgba(0,0,0,0)');
     renderer.setSize(width, height);
     this.createAndSetupSky();
 
-    this.createGround();
+    if (this.state.settings.load.ground) {
+      this.createGround();
+    }
 
     //this.createAndSetupFog();
 
@@ -208,7 +219,9 @@ class Scene extends Component {
     // this.hemiLight = hLight;
 
     //create and setup the sky and sunlight
-    this.createSky();
+    if (this.state.settings.load.sky) {
+      this.createSky();
+    }
   };
   setupSkyLight = ({ x, y, z, distance }) => {
     if (this.state.settings.load.lights) {
@@ -374,7 +387,7 @@ class Scene extends Component {
         quality: 100,
         alphaTest: 0.3,
       },
-      {
+      /*{
         path: '/static/models/trees/palm00/gltf/palm00_mq.gltf',
         lodDistance: 300,
         alphaShadows: true,
@@ -387,16 +400,17 @@ class Scene extends Component {
         alphaShadows: true,
         quality: 25,
         alphaTest: 0.3,
-      },
+      },*/
     ];
     loadModels(modelsToLoad)
       .then(objs => {
         //create 100 clones for the objects, with the high and low quality
         //objects
         for (let i = 0; i < this.state.settings.numTrees; i++) {
-          const pos = randomPositionInCircle(
-            this.state.settings.treesSpawnRadius
-          );
+          const pos = { x: 50, y: -50 };
+          // const pos = randomPositionInCircle(
+          //   this.state.settings.treesSpawnRadius
+          // );
           //newObj.position.set(rndInCircle.x, 0, rndInCircle.y);
           //newObj.rotation.y = Math.random() * Math.PI * 2;
           const yRot = Math.random() * Math.PI * 2;
@@ -492,10 +506,21 @@ class Scene extends Component {
     this.scene = scene;
     this.setupScene();
     const controls = new OrbitControls(this.camera, this.renderer.domElement);
-    controls.maxPolarAngle = Math.PI * (1 / 2); //(1 / 4);
-    controls.minPolarAngle = Math.PI * (1 / 8);
-    controls.minDistance = 10 * this.scl;
-    controls.maxDistance = 128 * this.scl;
+    document.addEventListener('contextmenu', () => {
+      if (this.state.settings.shadowHelper) {
+        controls.dispose();
+      }
+    });
+    // controls.addEventListener('mousedown', e => {
+    //   console.log(e);
+    //   //if (this.mouseDownType === this.MOUSE.left) {
+    //   controls.enabled = false;
+    // });
+    controls.screenSpacePanning = true;
+    //controls.maxPolarAngle = Math.PI * (1 / 2); //(1 / 4);
+    //controls.minPolarAngle = Math.PI * (1 / 8);
+    //controls.minDistance = 10 * this.scl;
+    //controls.maxDistance = 128 * this.scl;
     //controls.addEventListener( 'change', render );
     this.cameraControls = controls;
     //if(this.state.settings.enable)
