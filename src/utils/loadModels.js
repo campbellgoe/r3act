@@ -1,5 +1,7 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+//import { TextureLoader } from 'three/src/loaders/TextureLoader';
+import * as THREE from 'three';
 //import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 
 const loadFBX = (path, resolve, reject) => {
@@ -20,8 +22,34 @@ const loadFBX = (path, resolve, reject) => {
     }
   );
 };
+const loadSprite = (path, resolve, reject) => {
+  try {
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      path,
+      function(map) {
+        console.log('loaded sprite png...', map);
+        const spriteMaterial = new THREE.SpriteMaterial({
+          map,
+          color: 0x447744,
+        });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        resolve(sprite);
+      },
+      undefined,
+      function(err) {
+        reject(err);
+      }
+    );
+  } catch (err) {
+    reject(err);
+  }
+};
+//loadSprite
 const getTypeFromPath = path => {
-  if (path.endsWith('.gltf') || path.endsWith('.glb')) {
+  if (path.endsWith('.png')) {
+    return 'sprite';
+  } else if (path.endsWith('.gltf') || path.endsWith('.glb')) {
     return 'gltf';
   } else if (path.endsWith('.fbx')) {
     return 'fbx';
@@ -46,6 +74,11 @@ const loadModels = objs => {
           });
         };
         switch (type) {
+          case 'sprite': {
+            console.log('loading sprite', path);
+            loadSprite(path, doResolve, reject);
+            break;
+          }
           //TODO: remove import('...') from within this loop, only import loaders once
           case 'fbx': {
             if (!window.THREE.FBXLoader) {
@@ -60,7 +93,7 @@ const loadModels = objs => {
           }
           case 'gltf': {
             const loader = new GLTFLoader();
-            console.log('loading', path);
+            console.log('loading model', path);
             loader.load(
               path,
               function(gltf) {

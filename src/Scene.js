@@ -43,8 +43,8 @@ class Scene extends Component {
         shadowScale: 1.13,
         ambientLightIntensity: 1,
         dayOffset: 0.12,
-        numTrees: 2200,
-        treesSpawnRadius: 2500,
+        numTrees: 2300,
+        treesSpawnRadius: 3000,
         minutesPerDay: 8,
         allowOrientationControls: false,
         enableCameraShowcase: false,
@@ -164,7 +164,7 @@ class Scene extends Component {
   };
   setupScene = () => {
     const { width, height, colours, o } = this;
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 5000);
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 5000);
     this.timeStart = Date.now();
     this.camera = camera;
     camera.position.set(o.x, o.y, o.z);
@@ -226,7 +226,7 @@ class Scene extends Component {
       const dLightSettings = {
         colour: colours.sunlight,
         intensity: 5,
-        bias: 0.000001,
+        bias: 0.00001,
         far: distance * 2 * this.scl,
         castShadow: true,
         mapSize: maxTS,
@@ -358,6 +358,9 @@ class Scene extends Component {
     simplified.position.copy(mesh.position);
     return simplified;
   };
+  validateColourValue = val => {
+    return Math.min(255, Math.max(0, Math.floor(val)));
+  };
   loadAndSetupModels = () => {
     //importSimplifyModifier().then(SimplifyModifier => {
     //console.log(process.env.PUBLIC_URL);
@@ -376,17 +379,26 @@ class Scene extends Component {
       },
       {
         path: '/static/models/trees/palm00/gltf/palm00_mq.gltf',
-        lodDistance: 300,
+        lodDistance: 200,
         alphaShadows: true,
         quality: 50,
         alphaTest: 0.3,
       },
       {
         path: '/static/models/trees/palm00/gltf/palm00_lq.gltf',
-        lodDistance: 600,
+        lodDistance: 400,
         alphaShadows: true,
         quality: 25,
         alphaTest: 0.3,
+      },
+      {
+        path: '/static/sprites/trees/palm00/palm00_512x512_0.png',
+        lodDistance: 1300,
+        alphaShadows: false,
+        quality: 1,
+        alphaTest: 1,
+        scale: 128,
+        offsetY: 64 - 8,
       },
     ];
     loadModels(modelsToLoad)
@@ -408,42 +420,94 @@ class Scene extends Component {
           const r = 246 - Math.ceil(Math.random() * 120);
           const g = 256 - Math.ceil(Math.random() * 50);
           const b = 256 - Math.ceil(Math.random() * 120);
+          // const spriteDarken = 0.4;
+          // const spriteColour = {
+          //   r: Math.floor(r * spriteDarken),
+          //   g: Math.floor(g * spriteDarken),
+          //   b: Math.floor(b * spriteDarken),
+          // };
           //Create spheres with 3 levels of detail and create new LOD levels for them
           //for (var i = 0; i < 3; i++) {
           objs.forEach(
-            ({ model, lodDistance, alphaShadows, alphaTest = 0.33 }) => {
+            ({
+              model,
+              type,
+              lodDistance,
+              alphaShadows,
+              alphaTest = 0.33,
+              scale = 1,
+              offsetY = 0,
+            }) => {
               const myObj = model.clone();
-              myObj.traverse(o => {
-                if (o.isMesh) {
-                  o.castShadow = true;
-                  o.receiveShadow = true;
-                  if (o.material.name.includes('leaf')) {
-                    //set the correct material for leaf textures
-                    //including transparency, and a random base colour
+              if (scale !== 1) {
+                myObj.scale.set(scale, scale, scale);
+              }
+              if (offsetY !== 0) {
+                myObj.position.set(0, offsetY, 0);
+              }
 
-                    o.material = new THREE.MeshLambertMaterial({
-                      map: o.material.map,
-                      alphaTest,
-                      transparent: true,
-                      color: `rgb(${r},${g},${b})`,
-                      dithering: true,
-                    });
-                    if (alphaShadows) {
-                      const customDepthMaterial = new THREE.MeshDepthMaterial({
-                        depthPacking: THREE.RGBADepthPacking,
+              if (type === 'sprite') {
+                // myObj.material = new THREE.SpriteMaterial({
+                //   map: myObj.material.map,
+                //   color: `rgb(${spriteColour.r},${spriteColour.g},${
+                //     spriteColour.b
+                //   })`,
+                // });
+                //myObj.receiveShadow = true;
+                // myObj.material.color.set(
+                //   `rgb(${spriteColour.r},${spriteColour.g},${spriteColour.b})`
+                // );
+
+                //myObj.userData.instanceColor = `rgb(${sr},${sg},${sb})`;
+                myObj.onBeforeRender = () => {
+                  const brightness = this.ambiBrightness;
+                  const value = this.validateColourValue(128 * brightness);
+                  const col = `rgb(${value},${value},${value})`;
+
+                  myObj.material.color.set(col);
+                  // myObj.material = new THREE.SpriteMaterial({
+                  //   map: myObj.material.map,
+                  //   color: myObj.userData.instanceColor,
+                  // });
+                };
+              }
+              if (type !== 'sprite') {
+                myObj.traverse(o => {
+                  if (o.isMesh) {
+                    o.castShadow = true;
+                    o.receiveShadow = true;
+                    if (o.material.name.includes('leaf')) {
+                      //set the correct material for leaf textures
+                      //including transparency, and a random base colour
+
+                      o.material = new THREE.MeshLambertMaterial({
                         map: o.material.map,
                         alphaTest,
+                        transparent: true,
+                        color: `rgb(${r},${g},${b})`,
+                        dithering: true,
                       });
-                      o.customDepthMaterial = customDepthMaterial;
+                      if (alphaShadows) {
+                        const customDepthMaterial = new THREE.MeshDepthMaterial(
+                          {
+                            depthPacking: THREE.RGBADepthPacking,
+                            map: o.material.map,
+                            alphaTest,
+                          }
+                        );
+                        o.customDepthMaterial = customDepthMaterial;
+                      }
+                    } else {
+                      o.material = new THREE.MeshLambertMaterial({
+                        map: o.material.map,
+                        color: `rgb(${g},${g},${g})`,
+                      });
                     }
-                  } else {
-                    o.material = new THREE.MeshLambertMaterial({
-                      map: o.material.map,
-                      color: `rgb(${g},${g},${g})`,
-                    });
                   }
-                }
-              });
+                });
+              }
+              myObj.updateMatrixWorld();
+              myObj.matrixAutoUpdate = false;
               lod.addLevel(myObj, lodDistance);
             }
           );
@@ -803,6 +867,11 @@ class Scene extends Component {
       //Math.abs((azi % 0.5) - 0.25) * 4;
       //if (this.frame % 2 === 0) console.log(this.ambiBrightness);
       this.brightness = this.aziBrightness;
+
+      // this.spriteColour = Math.min(
+      //   0x555555,
+      //   Math.max(0, 0x555555 * this.ambiBrightness)
+      // );
       //console.log('azih', this.aziHeight ** 4);
 
       // this.camera.updateProjectionMatrix();
