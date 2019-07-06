@@ -63,16 +63,21 @@ const loadModels = objs => {
   console.log('models to load', objs);
   if (!Array.isArray(objs)) throw new Error('objs must be an array');
   return Promise.all(
-    objs.map(({ path, ...rest }) => {
+    objs.map(({ path = '', modelReference, ...rest }, index) => {
+      const isReference = typeof modelReference == 'number';
       return new Promise((resolve, reject) => {
-        const type = getTypeFromPath(path);
+        const type = isReference ? 'reference' : getTypeFromPath(path);
         const doResolve = model => {
           resolve({
             model,
+            modelReference,
             type,
             ...rest,
           });
         };
+        if (isReference) {
+          return doResolve(modelReference);
+        }
         switch (type) {
           case 'sprite': {
             console.log('loading sprite', path);

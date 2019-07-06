@@ -16,6 +16,7 @@ import DatGui, {
   DatFolder,
   DatNumber,
   DatBoolean,
+  DatButton,
   //DatButton,
 } from 'react-dat-gui';
 
@@ -38,35 +39,36 @@ class Scene extends Component {
   constructor() {
     super();
     this.state = {
-      settings: {
-        shadowFalloff: 3.8,
-        shadowScale: 1.13,
-        ambientLightIntensity: 1,
-        dayOffset: 0.12,
-        numTrees: 2300,
-        treesSpawnRadius: 3000,
-        minutesPerDay: 8,
-        allowOrientationControls: false,
-        enableCameraShowcase: false,
-        skyUpdateStep: 1,
-        load: {
-          models: true,
-          lights: true,
-          ground: true,
-        },
-        shadowHelper: true,
-      },
+      settings: this.defaultSettings,
     };
     //if has local data, load it and save in state.settings.
     //else save state into local data.
     this.ld = this.loadLocalData();
-        if(!this.ld.initialized){
-            this.ld = {...this.state.settings, initialized: true};
-            this.saveLocalData(this.ld);
-        } else {
-            this.state.settings = this.ld;
-        }
+    if (!this.ld.initialized) {
+      this.ld = { ...this.state.settings, initialized: true };
+      this.saveLocalData(this.ld);
+    } else {
+      this.state.settings = this.ld;
+    }
   }
+  defaultSettings = {
+    shadowFalloff: 3.8,
+    shadowScale: 1.13,
+    ambientLightIntensity: 1,
+    dayOffset: 0.12,
+    numTrees: 2300,
+    treesSpawnRadius: 3000,
+    minutesPerDay: 8,
+    allowOrientationControls: false,
+    enableCameraShowcase: false,
+    skyUpdateStep: 1,
+    load: {
+      models: true,
+      lights: true,
+      ground: true,
+    },
+    shadowHelper: true,
+  };
   //scene scale
   scl = 3;
   //camera x,y,z offset
@@ -102,6 +104,88 @@ class Scene extends Component {
     azimuth: 0.4,
     sun: true,
   };
+  setupScene = () => {
+    const scene = new THREE.Scene();
+    this.scene = scene;
+    const { width, height, colours, o } = this;
+    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 5000);
+    this.timeStart = Date.now();
+    this.camera = camera;
+    //camera.position.set(o.x, o.y, o.z);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = renderer;
+    renderer.gammaOutput = true;
+    renderer.gammaFactor = 2.2;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setClearColor(colours.sky);
+    renderer.setSize(width, height);
+    this.createAndSetupSky();
+
+    this.createGround();
+
+    //this.createAndSetupFog();
+
+    this.loadAndSetupModels();
+  };
+  loadLocalData() {
+    let ld = localStorage.getItem('r3act_data');
+    if (ld === null) {
+      ld = {};
+      return ld;
+    }
+    try {
+      ld = JSON.parse(ld);
+    } catch (err) {
+      console.error(err);
+      ld = {};
+    }
+    return ld;
+  }
+  saveLocalData(ld) {
+    localStorage.setItem('r3act_data', JSON.stringify(ld));
+  }
+  ld = {};
+  //recursively clear/dispose a scene and all its children
+  clearScene(obj) {
+    while (obj.children.length > 0) {
+      this.clearScene(obj.children[0]);
+      obj.remove(obj.children[0]);
+    }
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) obj.material.dispose();
+    if (obj.texture) obj.texture.dispose();
+  }
+
+  componentDidMount() {
+    window.THREE = THREE;
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+    this.setupScene();
+
+    const controls = new OrbitControls(this.camera, this.renderer.domElement);
+    controls.target = new THREE.Vector3(60, 10, 60);
+    controls.maxPolarAngle = Math.PI * (1 / 2); //(1 / 4);
+    controls.minPolarAngle = Math.PI * (1 / 8);
+    controls.minDistance = 10 * this.scl;
+    controls.maxDistance = 128 * this.scl;
+    //controls.addEventListener( 'change', render );
+    this.cameraControls = controls;
+    //if(this.state.settings.enable)
+    if (window.DeviceOrientationEvent) {
+      importDeviceOrientationControls().then(DeviceOrientationControls => {
+        const controls = new DeviceOrientationControls(this.camera);
+        this.orientationControls = controls;
+      });
+    }
+    this.mount.appendChild(this.renderer.domElement);
+    this.start();
+  }
+
+  componentWillUnmount() {
+    this.stop();
+    this.mount.removeChild(this.renderer.domElement);
+  }
   updateSkyAndSun = (sky, sunSphere, settings) => {
     let uniforms = sky.material.uniforms;
     uniforms['turbidity'].value = settings.turbidity;
@@ -170,28 +254,6 @@ class Scene extends Component {
           guiChanged();
                     
         */
-  };
-  setupScene = () => {
-    const { width, height, colours, o } = this;
-    const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 5000);
-    this.timeStart = Date.now();
-    this.camera = camera;
-    camera.position.set(o.x, o.y, o.z);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer = renderer;
-    renderer.gammaOutput = true;
-    renderer.gammaFactor = 2.2;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.setClearColor(colours.sky);
-    renderer.setSize(width, height);
-    this.createAndSetupSky();
-
-    this.createGround();
-
-    //this.createAndSetupFog();
-
-    this.loadAndSetupModels();
   };
   updateAmbientLightBrightness = (directBrightness, ambientBrightness) => {
     this.aLight.intensity = 0.3 * ambientBrightness;
@@ -319,11 +381,11 @@ class Scene extends Component {
           scene.add(dLight);
           scene.add(dLight.target);
           this.dLights[lightName] = dLight;
-         // if (this.state.settings.shadowHelper) {
-            const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
-            scene.add(dLightHelper);
-            this.dLightHelpers[lightName] = dLightHelper;
-         // }
+          // if (this.state.settings.shadowHelper) {
+          const dLightHelper = new THREE.CameraHelper(dLight.shadow.camera);
+          scene.add(dLightHelper);
+          this.dLightHelpers[lightName] = dLightHelper;
+          // }
         }
       };
       createDLights(dLights);
@@ -378,6 +440,7 @@ class Scene extends Component {
     const palmLQ = '/static/models/trees/palm_gltf/palm0_LQ.glb';*/
     //const palmHQ = '/static/models/trees/palm00_fbx/palm00_hq.fbx';
     //const palmLQ = '/static/models/trees/palm00_fbx/palm00_lq.fbx';
+    const lodYOffset = 40;
     const modelsToLoad = [
       {
         path: '/static/models/trees/palm00/gltf/palm00_hq.gltf',
@@ -385,20 +448,75 @@ class Scene extends Component {
         alphaShadows: true,
         quality: 100,
         alphaTest: 0.3,
+        opacity: 0.05,
+        transparent: true,
+        yOffset: -lodYOffset,
+      },
+      {
+        //index being referenced, so not loading same model twice
+        modelReference: 0,
+        lodDistance: 50,
+        alphaShadows: false,
+        quality: 100,
+        alphaTest: 0.3,
+        opacity: 0.2,
+        yOffset: -lodYOffset,
+      },
+      {
+        //index being referenced, so not loading same model twice
+        modelReference: 0,
+        lodDistance: 80,
+        alphaShadows: false,
+        quality: 100,
+        alphaTest: 0.3,
+        opacity: 0.4,
+        yOffset: -lodYOffset,
+      },
+      {
+        //index being referenced, so not loading same model twice
+        modelReference: 0,
+        lodDistance: 100,
+        alphaShadows: false,
+        quality: 100,
+        alphaTest: 0.3,
+        opacity: 0.6,
+        yOffset: -lodYOffset,
+      },
+      {
+        //index being referenced, so not loading same model twice
+        modelReference: 0,
+        lodDistance: 130,
+        alphaShadows: false,
+        quality: 100,
+        alphaTest: 0.3,
+        opacity: 0.8,
+        yOffset: -lodYOffset,
+      },
+      {
+        //index being referenced, so not loading same model twice
+        modelReference: 0,
+        lodDistance: 160,
+        alphaShadows: false,
+        quality: 100,
+        alphaTest: 0.3,
+        opacity: 1,
+        yOffset: -lodYOffset,
       },
       {
         path: '/static/models/trees/palm00/gltf/palm00_mq.gltf',
-        lodDistance: 200,
+        lodDistance: 300,
         alphaShadows: true,
         quality: 50,
         alphaTest: 0.3,
+        yOffset: -lodYOffset,
       },
       {
         path: '/static/models/trees/palm00/gltf/palm00_lq.gltf',
-        lodDistance: 400,
+        lodDistance: 500,
         alphaShadows: true,
         quality: 25,
         alphaTest: 0.3,
+        yOffset: -lodYOffset,
       },
       {
         path: '/static/sprites/trees/palm00/palm00_512x512_0.png',
@@ -407,7 +525,7 @@ class Scene extends Component {
         quality: 1,
         alphaTest: 1,
         scale: 128,
-        offsetY: 64 - 8,
+        yOffset: -lodYOffset + 64 - 8,
       },
     ];
     loadModels(modelsToLoad)
@@ -422,7 +540,7 @@ class Scene extends Component {
           //newObj.rotation.y = Math.random() * Math.PI * 2;
           const yRot = Math.random() * Math.PI * 2;
           const lod = new THREE.LOD();
-          lod.position.set(pos.x, 0, pos.y);
+          lod.position.set(pos.x, lodYOffset, pos.y);
           lod.rotation.y = yRot;
           const scale = 1 + Math.random() * 0.3 - 0.15;
           lod.scale.set(scale, scale, scale);
@@ -437,89 +555,103 @@ class Scene extends Component {
           // };
           //Create spheres with 3 levels of detail and create new LOD levels for them
           //for (var i = 0; i < 3; i++) {
-          objs.forEach(
-            ({
+          objs.forEach((obj, index) => {
+            //use the obj from the reference
+            if (typeof obj.modelReference == 'number') {
+              //set the model to the referenced model
+              obj.model = objs[obj.modelReference].model;
+              console.log(
+                'getting loaded model by reference and cloning',
+                obj,
+                index
+              );
+            } else {
+              console.log('getting loaded model and cloning it', obj, index);
+            }
+
+            const {
               model,
               type,
               lodDistance,
               alphaShadows,
               alphaTest = 0.33,
               scale = 1,
-              offsetY = 0,
-            }) => {
-              const myObj = model.clone();
-              if (scale !== 1) {
-                myObj.scale.set(scale, scale, scale);
-              }
-              if (offsetY !== 0) {
-                myObj.position.set(0, offsetY, 0);
-              }
+              yOffset = 0,
+              opacity = 1,
+            } = obj;
+            const myObj = model.clone();
+            if (scale !== 1) {
+              myObj.scale.set(scale, scale, scale);
+            }
+            if (yOffset !== 0) {
+              myObj.position.set(0, yOffset, 0);
+            }
 
-              if (type === 'sprite') {
+            if (type === 'sprite') {
+              // myObj.material = new THREE.SpriteMaterial({
+              //   map: myObj.material.map,
+              //   color: `rgb(${spriteColour.r},${spriteColour.g},${
+              //     spriteColour.b
+              //   })`,
+              // });
+              //myObj.receiveShadow = true;
+              // myObj.material.color.set(
+              //   `rgb(${spriteColour.r},${spriteColour.g},${spriteColour.b})`
+              // );
+
+              //myObj.userData.instanceColor = `rgb(${sr},${sg},${sb})`;
+              myObj.onBeforeRender = () => {
+                const brightness = this.ambiBrightness;
+                const value = this.validateColourValue(128 * brightness);
+                const col = `rgb(${value},${value},${value})`;
+
+                myObj.material.color.set(col);
                 // myObj.material = new THREE.SpriteMaterial({
                 //   map: myObj.material.map,
-                //   color: `rgb(${spriteColour.r},${spriteColour.g},${
-                //     spriteColour.b
-                //   })`,
+                //   color: myObj.userData.instanceColor,
                 // });
-                //myObj.receiveShadow = true;
-                // myObj.material.color.set(
-                //   `rgb(${spriteColour.r},${spriteColour.g},${spriteColour.b})`
-                // );
+              };
+            }
+            if (type !== 'sprite') {
+              myObj.traverse(o => {
+                if (o.isMesh) {
+                  o.castShadow = true;
+                  o.receiveShadow = true;
+                  if (o.material.name.includes('leaf')) {
+                    //set the correct material for leaf textures
+                    //including transparency, and a random base colour
 
-                //myObj.userData.instanceColor = `rgb(${sr},${sg},${sb})`;
-                myObj.onBeforeRender = () => {
-                  const brightness = this.ambiBrightness;
-                  const value = this.validateColourValue(128 * brightness);
-                  const col = `rgb(${value},${value},${value})`;
-
-                  myObj.material.color.set(col);
-                  // myObj.material = new THREE.SpriteMaterial({
-                  //   map: myObj.material.map,
-                  //   color: myObj.userData.instanceColor,
-                  // });
-                };
-              }
-              if (type !== 'sprite') {
-                myObj.traverse(o => {
-                  if (o.isMesh) {
-                    o.castShadow = true;
-                    o.receiveShadow = true;
-                    if (o.material.name.includes('leaf')) {
-                      //set the correct material for leaf textures
-                      //including transparency, and a random base colour
-
-                      o.material = new THREE.MeshLambertMaterial({
+                    o.material = new THREE.MeshLambertMaterial({
+                      map: o.material.map,
+                      alphaTest,
+                      transparent: true,
+                      color: `rgb(${r},${g},${b})`,
+                      dithering: true,
+                      opacity,
+                    });
+                    if (alphaShadows) {
+                      const customDepthMaterial = new THREE.MeshDepthMaterial({
+                        depthPacking: THREE.RGBADepthPacking,
                         map: o.material.map,
                         alphaTest,
-                        transparent: true,
-                        color: `rgb(${r},${g},${b})`,
-                        dithering: true,
                       });
-                      if (alphaShadows) {
-                        const customDepthMaterial = new THREE.MeshDepthMaterial(
-                          {
-                            depthPacking: THREE.RGBADepthPacking,
-                            map: o.material.map,
-                            alphaTest,
-                          }
-                        );
-                        o.customDepthMaterial = customDepthMaterial;
-                      }
-                    } else {
-                      o.material = new THREE.MeshLambertMaterial({
-                        map: o.material.map,
-                        color: `rgb(${g},${g},${g})`,
-                      });
+                      o.customDepthMaterial = customDepthMaterial;
                     }
+                  } else {
+                    o.material = new THREE.MeshLambertMaterial({
+                      map: o.material.map,
+                      color: `rgb(${g},${g},${g})`,
+                      transparent: opacity !== 1,
+                      opacity,
+                    });
                   }
-                });
-              }
-              myObj.updateMatrixWorld();
-              myObj.matrixAutoUpdate = false;
-              lod.addLevel(myObj, lodDistance);
+                }
+              });
             }
-          );
+            myObj.updateMatrixWorld();
+            myObj.matrixAutoUpdate = false;
+            lod.addLevel(myObj, lodDistance);
+          });
 
           // var geometry = new THREE.IcosahedronBufferGeometry(10, 3);
 
@@ -556,54 +688,6 @@ class Scene extends Component {
       });
     //});
   };
-  loadLocalData(){
-    let ld = localStorage.getItem('r3act_data');
-    if(ld === null){
-    	ld = {};
-    	return ld;
-    }
-    try {
-      ld = JSON.parse(ld); 	
-    } catch(err) {
-    	console.error(err);
-    	ld = {};
-    }
-    return ld;
-  }
-  saveLocalData(ld){
-  	localStorage.setItem('r3act_data', JSON.stringify(ld));
-  }
-  ld = {};
-  componentDidMount() {
-    window.THREE = THREE;
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
-
-    const scene = new THREE.Scene();
-    this.scene = scene;
-    this.setupScene();
-    const controls = new OrbitControls(this.camera, this.renderer.domElement);
-    controls.maxPolarAngle = Math.PI * (1 / 2); //(1 / 4);
-    controls.minPolarAngle = Math.PI * (1 / 8);
-    controls.minDistance = 10 * this.scl;
-    controls.maxDistance = 128 * this.scl;
-    //controls.addEventListener( 'change', render );
-    this.cameraControls = controls;
-    //if(this.state.settings.enable)
-    if (window.DeviceOrientationEvent) {
-      importDeviceOrientationControls().then(DeviceOrientationControls => {
-        const controls = new DeviceOrientationControls(this.camera);
-        this.orientationControls = controls;
-      });
-    }
-    this.mount.appendChild(this.renderer.domElement);
-    this.start();
-  }
-
-  componentWillUnmount() {
-    this.stop();
-    this.mount.removeChild(this.renderer.domElement);
-  }
 
   start = () => {
     if (!this.frameId) {
@@ -690,7 +774,7 @@ class Scene extends Component {
               ))
         )
       );
-      console.log('c', c);
+      //console.log('c', c);
       const cl = 4;
       const cr = 4;
       const ct = 4;
@@ -787,7 +871,7 @@ class Scene extends Component {
       //dLight.shadow.camera.updateProjectionMatrix();
       const dLightHelper = this.dLightHelpers[lightName];
       if (this.state.settings.shadowHelper) {
-        if(!dLightHelper.visible) dLightHelper.visible = true; 
+        if (!dLightHelper.visible) dLightHelper.visible = true;
         dLightHelper.update();
       } else {
         dLightHelper.visible = false;
@@ -802,7 +886,7 @@ class Scene extends Component {
     const enableCamShowcase = false;
     const cam = this.camera;
     const o = this.o;
-    cam.position.y = Math.max(o.y, cam.position.y);
+    //cam.position.y = Math.max(o.y, cam.position.y);
     if (
       this.state.settings.allowOrientationControls &&
       this.hasDeviceOrientation(this.orientationControls)
@@ -938,12 +1022,15 @@ class Scene extends Component {
     this.renderer.render(this.scene, this.camera);
   };
   handleUpdate = settings => {
-    this.setState({
-      settings,
-    }, ()=>{
-    	this.ld = {...this.state.settings, initialized: true};
-    	            this.saveLocalData(this.ld);
-    });
+    this.setState(
+      {
+        settings,
+      },
+      () => {
+        this.ld = { ...this.state.settings, initialized: true };
+        this.saveLocalData(this.ld);
+      }
+    );
   };
   render() {
     const { settings } = this.state;
@@ -1016,6 +1103,12 @@ class Scene extends Component {
                     label='Orientation'
                   />
                   <DatBoolean path='shadowHelper' label='Shadow helper' />
+                  <DatButton
+                    label='Reset to default'
+                    onClick={() => {
+                      this.handleUpdate(this.defaultSettings);
+                    }}
+                  />
                 </DatFolder>
               </DatGui>
             </>
