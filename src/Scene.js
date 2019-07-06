@@ -19,6 +19,7 @@ import DatGui, {
   DatButton,
   //DatButton,
 } from 'react-dat-gui';
+import Stats from 'stats-js';
 
 const importDeviceOrientationControls = () => {
   return import('three/examples/js/controls/DeviceOrientationControls.js').then(
@@ -50,6 +51,10 @@ class Scene extends Component {
     } else {
       this.state.settings = this.ld;
     }
+    const stats = new Stats();
+    stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+    document.body.appendChild(stats.dom);
+    this.stats = stats;
   }
   defaultSettings = {
     shadowFalloff: 3.8,
@@ -882,6 +887,7 @@ class Scene extends Component {
     return oc && oc.deviceOrientation.type === 'deviceorientation';
   };
   animate = ms => {
+    this.stats.begin();
     ms = Math.round(ms / 10);
     const enableCamShowcase = false;
     const cam = this.camera;
@@ -1013,7 +1019,7 @@ class Scene extends Component {
     //if (this.trees) this.trees.position.x = Math.sin(ms / 300) * 40;
     //this.dLight.position.set(-x * 10, y * 10, -z * 10);
     //this.dLight.shadow.camera.updateProjectionMatrix();
-
+    this.stats.end();
     this.frameId = window.requestAnimationFrame(this.animate);
     this.frame++;
   };
